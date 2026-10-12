@@ -101,6 +101,7 @@ const INITIAL_PERSONAL_TASKS: Task[] = [
 
 const TASKS_STORAGE_KEY = 'taskflow_workspace_tasks'
 const WORKSPACES_STORAGE_KEY = 'taskflow_workspaces'
+const ACTIVE_WORKSPACE_KEY = 'taskflow_active_workspace_id'
 
 function loadSavedTasksMap(): Record<string, Task[]> | null {
   try {
@@ -133,6 +134,22 @@ function loadSavedWorkspaces(): WorkspaceItem[] | null {
 function saveWorkspaces(workspaces: WorkspaceItem[]): void {
   try {
     localStorage.setItem(WORKSPACES_STORAGE_KEY, JSON.stringify(workspaces))
+  } catch {
+    // ignore
+  }
+}
+
+function loadSavedActiveWorkspaceId(): string | null {
+  try {
+    return localStorage.getItem(ACTIVE_WORKSPACE_KEY)
+  } catch {
+    return null
+  }
+}
+
+function saveActiveWorkspaceId(id: string): void {
+  try {
+    localStorage.setItem(ACTIVE_WORKSPACE_KEY, id)
   } catch {
     // ignore
   }
@@ -183,15 +200,23 @@ const initialSavedMap = loadSavedTasksMap() || {
   'ws-personal': INITIAL_PERSONAL_TASKS,
 }
 
+const savedActiveWorkspaceId = loadSavedActiveWorkspaceId()
+const initialActiveWorkspace =
+  (savedActiveWorkspaceId &&
+    initialSavedWorkspaces.find((w) => w.id === savedActiveWorkspaceId)) ||
+  initialSavedWorkspaces[0] ||
+  DEFAULT_WORKSPACES[0]
+const initialActiveWorkspaceId = initialActiveWorkspace.id
+
 export const useTaskStore = create<TaskState>((set, get) => ({
-  tasks: initialSavedMap[DEFAULT_WORKSPACE_ID] || [],
+  tasks: initialSavedMap[initialActiveWorkspaceId] || [],
   workspaceTasksMap: initialSavedMap,
   workspaces: initialSavedWorkspaces,
-  activeWorkspace: initialSavedWorkspaces[0] || DEFAULT_WORKSPACES[0],
+  activeWorkspace: initialActiveWorkspace,
   isLoading: false,
   isSubmitting: false,
   error: null,
-  activeWorkspaceId: initialSavedWorkspaces[0]?.id || DEFAULT_WORKSPACE_ID,
+  activeWorkspaceId: initialActiveWorkspaceId,
 
   searchQuery: '',
   priorityFilter: 'ALL',
@@ -213,6 +238,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   },
 
   switchWorkspace: async (workspace: WorkspaceItem) => {
+    saveActiveWorkspaceId(workspace.id)
     const currentMap = get().workspaceTasksMap
     set({
       activeWorkspace: workspace,
@@ -232,6 +258,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   },
 
   addWorkspace: (newWs: WorkspaceItem) => {
+    saveActiveWorkspaceId(newWs.id)
     const updatedWorkspaces = [...get().workspaces, newWs]
     const updatedMap = {
       ...get().workspaceTasksMap,
