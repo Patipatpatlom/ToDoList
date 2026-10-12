@@ -73,6 +73,8 @@
       "descriptionLabel": "Description",
       "descriptionPlaceholder": "Provide background, steps, or acceptance criteria...",
       "priorityLabel": "Priority",
+      "assigneeLabel": "Assignee",
+      "unassignedOption": "Unassigned",
       "submitButton": "Create Task",
       "cancelButton": "Cancel"
     },

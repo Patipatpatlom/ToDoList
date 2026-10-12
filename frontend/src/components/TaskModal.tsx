@@ -21,6 +21,7 @@ const taskSchema = z.object({
     .max(500, { message: 'Description must be 500 characters or less' })
     .optional(),
   priority: z.enum(['LOW', 'MEDIUM', 'HIGH']),
+  assigneeId: z.string().optional(),
 })
 
 export type TaskFormValues = z.infer<typeof taskSchema>
@@ -55,6 +56,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       title: '',
       description: '',
       priority: 'MEDIUM',
+      assigneeId: '',
     },
   })
 
@@ -66,12 +68,14 @@ export const TaskModal: React.FC<TaskModalProps> = ({
           title: initialTask.title,
           description: initialTask.description || '',
           priority: initialTask.priority,
+          assigneeId: initialTask.assigneeId || initialTask.assignee?.id || '',
         })
       } else {
         reset({
           title: '',
           description: '',
           priority: 'MEDIUM',
+          assigneeId: '',
         })
       }
     }
@@ -127,28 +131,54 @@ export const TaskModal: React.FC<TaskModalProps> = ({
           )}
         </div>
 
-        {/* Priority Selector */}
-        <div className="flex flex-col gap-1.5">
-          <label
-            htmlFor="task-form-priority"
-            className="text-xs font-semibold text-slate-700 tracking-wide uppercase"
-          >
-            {t('dashboard.modal.priorityLabel')}
-          </label>
-          <select
-            id="task-form-priority"
-            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500 cursor-pointer"
-            {...register('priority')}
-          >
-            <option value="LOW">{t('dashboard.priorities.low')}</option>
-            <option value="MEDIUM">{t('dashboard.priorities.medium')}</option>
-            <option value="HIGH">{t('dashboard.priorities.high')}</option>
-          </select>
-          {errors.priority && (
-            <p className="text-xs text-rose-600 font-medium">
-              {errors.priority.message}
-            </p>
-          )}
+        {/* Priority & Assignee Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Priority Selector */}
+          <div className="flex flex-col gap-1.5">
+            <label
+              htmlFor="task-form-priority"
+              className="text-xs font-semibold text-slate-700 tracking-wide uppercase"
+            >
+              {t('dashboard.modal.priorityLabel')}
+            </label>
+            <select
+              id="task-form-priority"
+              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500 cursor-pointer"
+              {...register('priority')}
+            >
+              <option value="LOW">{t('dashboard.priorities.low')}</option>
+              <option value="MEDIUM">{t('dashboard.priorities.medium')}</option>
+              <option value="HIGH">{t('dashboard.priorities.high')}</option>
+            </select>
+            {errors.priority && (
+              <p className="text-xs text-rose-600 font-medium">
+                {errors.priority.message}
+              </p>
+            )}
+          </div>
+
+          {/* Assignee Selector */}
+          <div className="flex flex-col gap-1.5">
+            <label
+              htmlFor="task-form-assignee"
+              className="text-xs font-semibold text-slate-700 tracking-wide uppercase"
+            >
+              {t('dashboard.modal.assigneeLabel')}
+            </label>
+            <select
+              id="task-form-assignee"
+              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500 cursor-pointer"
+              {...register('assigneeId')}
+            >
+              <option value="">{t('dashboard.modal.unassignedOption')}</option>
+              <option value="7217035a-7369-481a-b37e-7e22cc2d68c8">
+                Alice Johnson (Tech Lead)
+              </option>
+              <option value="eb99fc02-8a76-407a-a42d-3fe8fd42dc99">
+                Bob Smith (Developer)
+              </option>
+            </select>
+          </div>
         </div>
 
         {/* Action Buttons */}

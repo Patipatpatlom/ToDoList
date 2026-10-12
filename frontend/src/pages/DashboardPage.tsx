@@ -94,9 +94,29 @@ export const DashboardPage: React.FC = () => {
     }
   }
 
+  // Known workspace members list
+  const workspaceMembers = useMemo(
+    () => [
+      {
+        id: '7217035a-7369-481a-b37e-7e22cc2d68c8',
+        name: 'Alice Johnson',
+        email: 'alice@example.com',
+      },
+      {
+        id: 'eb99fc02-8a76-407a-a42d-3fe8fd42dc99',
+        name: 'Bob Smith',
+        email: 'bob@example.com',
+      },
+    ],
+    [],
+  )
+
   // Handle Create or Edit task submit
   const handleFormSubmit = async (values: TaskFormValues) => {
     try {
+      const selectedAssignee =
+        workspaceMembers.find((m) => m.id === values.assigneeId) || null
+
       if (editingTask) {
         // Update local task state in this phase
         const currentTasks = useTaskStore.getState().tasks
@@ -107,6 +127,8 @@ export const DashboardPage: React.FC = () => {
                 title: values.title,
                 description: values.description || null,
                 priority: values.priority,
+                assigneeId: values.assigneeId || null,
+                assignee: selectedAssignee,
               }
             : t,
         )
@@ -118,6 +140,7 @@ export const DashboardPage: React.FC = () => {
           title: values.title,
           description: values.description,
           priority: values.priority,
+          assigneeId: values.assigneeId || undefined,
         })
         toast.success(t('dashboard.toast.createSuccess'))
       }

@@ -73,6 +73,8 @@
       "descriptionLabel": "รายละเอียดงาน",
       "descriptionPlaceholder": "ระบุที่มา ขั้นตอน หรือเกณฑ์การตรวจรับงาน...",
       "priorityLabel": "ระดับความสำคัญ",
+      "assigneeLabel": "ผู้รับผิดชอบงาน",
+      "unassignedOption": "ยังไม่มอบหมาย",
       "submitButton": "สร้างงาน",
       "cancelButton": "ยกเลิก"
     },
