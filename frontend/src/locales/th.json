@@ -28,8 +28,13 @@
     "defaultUser": "ผู้ใช้งานระบบ"
   },
   "sidebar": {
-    "workspaceTitle": "Workspace Alpha",
+    "workspaceTitle": "Product Engineering",
     "workspaceSubtitle": "ระดับเริ่มต้น · 2 สมาชิก",
+    "switchWorkspace": "สลับพื้นที่ทำงาน",
+    "createWorkspace": "สร้างห้องใหม่",
+    "newWorkspacePlaceholder": "ตั้งชื่อห้องใหม่...",
+    "workspaceCreated": "สร้างพื้นที่ทำงานสำเร็จ",
+    "workspaceSwitched": "สลับไปยัง",
     "views": "มุมมองและสถานะ",
     "taskBoard": "กระดานงาน",
     "allTasks": "งานทั้งหมด",

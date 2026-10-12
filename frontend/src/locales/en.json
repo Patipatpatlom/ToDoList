@@ -28,8 +28,13 @@
     "defaultUser": "Workspace User"
   },
   "sidebar": {
-    "workspaceTitle": "Workspace Alpha",
+    "workspaceTitle": "Product Engineering",
     "workspaceSubtitle": "Free Tier · 2 Members",
+    "switchWorkspace": "Switch Workspace",
+    "createWorkspace": "Create Workspace",
+    "newWorkspacePlaceholder": "New workspace name...",
+    "workspaceCreated": "Workspace created successfully",
+    "workspaceSwitched": "Switched to",
     "views": "Views & Status",
     "taskBoard": "Task Board",
     "allTasks": "All Tasks",
