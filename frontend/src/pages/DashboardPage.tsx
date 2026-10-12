@@ -1,4 +1,10 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
+import {
+  DragDropContext,
+  Droppable,
+  Draggable,
+  type DropResult,
+} from '@hello-pangea/dnd'
 import {
   Plus,
   Search,
@@ -11,90 +17,100 @@ import {
   User,
   Sparkles,
   Layers,
+  Loader2,
+  GripVertical,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '../components/Button'
-import { Input } from '../components/Input'
-import { Modal } from '../components/Modal'
-
-interface Task {
-  id: string
-  title: string
-  description?: string
-  status: 'TODO' | 'IN_PROGRESS' | 'DONE'
-  priority: 'LOW' | 'MEDIUM' | 'HIGH'
-  assignee?: string
-  createdAt: string
-}
-
-const INITIAL_TASKS: Task[] = [
-  {
-    id: 'task-1',
-    title: 'Setup Database Migration & Seed script',
-    description: 'Ensure PostgreSQL 16 schema with Prisma is up to date and seeded with initial demo data.',
-    status: 'DONE',
-    priority: 'HIGH',
-    assignee: 'John Doe',
-    createdAt: 'Today, 10:30 AM',
-  },
-  {
-    id: 'task-2',
-    title: 'Develop Task RESTful API & Transactions',
-    description: 'Implement Layered Architecture with Controller, Service, and Repository layers.',
-    status: 'IN_PROGRESS',
-    priority: 'HIGH',
-    assignee: 'Jane Smith',
-    createdAt: 'Today, 01:15 PM',
-  },
-  {
-    id: 'task-3',
-    title: 'Setup Vitest Automated Testing Suite',
-    description: 'Verify Unit and Integration tests with Supertest and high branch test coverage.',
-    status: 'TODO',
-    priority: 'MEDIUM',
-    assignee: 'John Doe',
-    createdAt: 'Yesterday',
-  },
-]
+import { TaskModal, type TaskFormValues } from '../components/TaskModal'
+import { useTaskStore } from '../store/taskStore'
+import { type Task } from '../services/taskService'
+import { cn } from '../utils/cn'
 
 export const DashboardPage: React.FC = () => {
   const { t } = useTranslation()
-  const [tasks, setTasks] = useState<Task[]>(INITIAL_TASKS)
+  const {
+    tasks,
+    isLoading,
+    isSubmitting,
+    fetchTasks,
+    createTask,
+    updateTaskStatusOptimistic,
+  } = useTaskStore()
+
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedPriority, setSelectedPriority] = useState<string>('ALL')
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [editingTask, setEditingTask] = useState<Task | null>(null)
 
-  // New task form state
-  const [newTitle, setNewTitle] = useState('')
-  const [newDescription, setNewDescription] = useState('')
-  const [newPriority, setNewPriority] = useState<'LOW' | 'MEDIUM' | 'HIGH'>('MEDIUM')
+  // Fetch live tasks on mount
+  useEffect(() => {
+    fetchTasks()
+  }, [fetchTasks])
 
-  const handleCreateTask = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!newTitle.trim()) return
+  // Drag & Drop Handler with Optimistic UI Update
+  const handleDragEnd = (result: DropResult) => {
+    const { destination, source, draggableId } = result
+    if (!destination) return
 
-    const newTask: Task = {
-      id: `task-${Date.now()}`,
-      title: newTitle,
-      description: newDescription,
-      status: 'TODO',
-      priority: newPriority,
-      assignee: 'Current User',
-      createdAt: 'Just now',
+    // If dropped in same column and position, do nothing
+    if (
+      destination.droppableId === source.droppableId &&
+      destination.index === source.index
+    ) {
+      return
     }
 
-    setTasks([newTask, ...tasks])
-    setNewTitle('')
-    setNewDescription('')
-    setNewPriority('MEDIUM')
-    setIsModalOpen(false)
+    const newStatus = destination.droppableId as 'TODO' | 'IN_PROGRESS' | 'DONE'
+    updateTaskStatusOptimistic(draggableId, newStatus)
   }
 
+  // Handle Create or Edit task submit
+  const handleFormSubmit = async (values: TaskFormValues) => {
+    if (editingTask) {
+      // In this phase, editing updates local task state
+      // (or PATCH endpoint when available)
+      const currentTasks = useTaskStore.getState().tasks
+      const updated = currentTasks.map((t) =>
+        t.id === editingTask.id
+          ? {
+              ...t,
+              title: values.title,
+              description: values.description || null,
+              priority: values.priority,
+            }
+          : t,
+      )
+      useTaskStore.getState().setTasks(updated)
+      setEditingTask(null)
+    } else {
+      await createTask({
+        title: values.title,
+        description: values.description,
+        priority: values.priority,
+      })
+    }
+  }
+
+  const handleOpenCreateModal = () => {
+    setEditingTask(null)
+    setIsModalOpen(true)
+  }
+
+  const handleCardClick = (task: Task) => {
+    setEditingTask(task)
+    setIsModalOpen(true)
+  }
+
+  // Search & Filter computation
   const filteredTasks = tasks.filter((task) => {
-    const matchesSearch =
-      task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (task.description && task.description.toLowerCase().includes(searchQuery.toLowerCase()))
-    const matchesPriority = selectedPriority === 'ALL' || task.priority === selectedPriority
+    const titleMatch = task.title.toLowerCase().includes(searchQuery.toLowerCase())
+    const descMatch =
+      task.description &&
+      task.description.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesSearch = titleMatch || Boolean(descMatch)
+    const matchesPriority =
+      selectedPriority === 'ALL' || task.priority === selectedPriority
     return matchesSearch && matchesPriority
   })
 
@@ -122,7 +138,27 @@ export const DashboardPage: React.FC = () => {
     }
   }
 
-  const columns: { status: Task['status']; label: string; icon: React.ReactNode; dotColor: string }[] = [
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return 'Today'
+    try {
+      const date = new Date(dateString)
+      return isNaN(date.getTime())
+        ? dateString
+        : date.toLocaleDateString(undefined, {
+            month: 'short',
+            day: 'numeric',
+          })
+    } catch {
+      return dateString
+    }
+  }
+
+  const columns: {
+    status: 'TODO' | 'IN_PROGRESS' | 'DONE'
+    label: string
+    icon: React.ReactNode
+    dotColor: string
+  }[] = [
     {
       status: 'TODO',
       label: t('dashboard.columns.todo'),
@@ -144,7 +180,7 @@ export const DashboardPage: React.FC = () => {
   ]
 
   return (
-    <div className="space-y-7 pb-8">
+    <div className="space-y-7 pb-8 select-none">
       {/* Top Banner & Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-1">
         <div>
@@ -155,6 +191,9 @@ export const DashboardPage: React.FC = () => {
             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-brand-50 text-brand-600">
               <Sparkles className="w-3 h-3" /> {t('dashboard.phaseBadge')}
             </span>
+            {isLoading && (
+              <Loader2 className="w-4 h-4 text-brand-500 animate-spin ml-2" />
+            )}
           </div>
           <p className="text-sm text-slate-500 mt-1">
             {t('dashboard.subtitle')}
@@ -165,7 +204,7 @@ export const DashboardPage: React.FC = () => {
           <Button
             id="create-task-btn"
             variant="primary"
-            onClick={() => setIsModalOpen(true)}
+            onClick={handleOpenCreateModal}
             leftIcon={<Plus className="w-4 h-4" />}
             className="rounded-lg shadow-xs hover:shadow-md transition-all duration-200"
           >
@@ -174,14 +213,16 @@ export const DashboardPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Summary KPI Cards - Compact with Faded Icons */}
+      {/* Summary KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {/* Total Tasks */}
         <div className="bg-white rounded-xl p-4 shadow-xs hover:shadow-sm transition-shadow relative overflow-hidden">
           <span className="text-xs font-medium text-slate-400">
             {t('dashboard.kpi.totalTasks')}
           </span>
-          <div className="text-2xl font-bold text-slate-900 mt-1">{tasks.length}</div>
+          <div className="text-2xl font-bold text-slate-900 mt-1">
+            {tasks.length}
+          </div>
           <Layers className="w-10 h-10 absolute -right-1 -bottom-1 text-slate-100 pointer-events-none" />
         </div>
 
@@ -219,7 +260,7 @@ export const DashboardPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Filter and Search Bar - Clean & Soft */}
+      {/* Filter and Search Bar */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white p-2.5 rounded-xl shadow-xs">
         <div className="relative flex-1 max-w-md">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -252,138 +293,127 @@ export const DashboardPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Kanban Board Columns - Soft Background, No Hard Borders */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
-        {columns.map((col) => {
-          const colTasks = filteredTasks.filter((t) => t.status === col.status)
-          return (
-            <div
-              key={col.status}
-              className="rounded-2xl bg-slate-100/70 p-4 flex flex-col min-h-[500px]"
-            >
-              {/* Column Header */}
-              <div className="flex items-center justify-between pb-3 mb-3">
-                <div className="flex items-center gap-2">
-                  <span className={`w-2 h-2 rounded-full ${col.dotColor}`} />
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
-                    {col.label}
-                  </h3>
-                </div>
-                <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-white text-slate-600 shadow-xs">
-                  {colTasks.length}
-                </span>
-              </div>
-
-              {/* Task Cards Container */}
-              <div className="space-y-3 flex-1 overflow-y-auto">
-                {colTasks.length === 0 ? (
-                  <div className="h-28 flex flex-col items-center justify-center text-center p-4 rounded-xl bg-white/40">
-                    <p className="text-xs text-slate-400">
-                      {t('dashboard.columns.empty')}
-                    </p>
+      {/* Drag & Drop Kanban Columns */}
+      <DragDropContext onDragEnd={handleDragEnd}>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+          {columns.map((col) => {
+            const colTasks = filteredTasks.filter((t) => t.status === col.status)
+            return (
+              <div
+                key={col.status}
+                className="rounded-2xl bg-slate-100/70 p-4 flex flex-col min-h-[520px]"
+              >
+                {/* Column Header */}
+                <div className="flex items-center justify-between pb-3 mb-3">
+                  <div className="flex items-center gap-2">
+                    <span className={`w-2 h-2 rounded-full ${col.dotColor}`} />
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                      {col.label}
+                    </h3>
                   </div>
-                ) : (
-                  colTasks.map((task) => (
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-white text-slate-600 shadow-xs">
+                    {colTasks.length}
+                  </span>
+                </div>
+
+                {/* Droppable Area */}
+                <Droppable droppableId={col.status}>
+                  {(provided, snapshot) => (
                     <div
-                      key={task.id}
-                      className="bg-white rounded-xl p-4 shadow-xs hover:shadow-md transition-all duration-200 cursor-pointer group"
-                    >
-                      <div className="flex items-start justify-between gap-2 mb-2">
-                        <span className="text-sm font-semibold text-slate-900 group-hover:text-brand-600 transition-colors">
-                          {task.title}
-                        </span>
-                        {getPriorityBadge(task.priority)}
-                      </div>
-
-                      {task.description && (
-                        <p className="text-xs text-slate-500 line-clamp-2 mb-3 leading-relaxed">
-                          {task.description}
-                        </p>
+                      ref={provided.innerRef}
+                      {...provided.droppableProps}
+                      className={cn(
+                        'space-y-3 flex-1 overflow-y-auto transition-colors rounded-xl min-h-[420px] p-1',
+                        snapshot.isDraggingOver && 'bg-slate-200/50',
                       )}
+                    >
+                      {colTasks.length === 0 && !snapshot.isDraggingOver ? (
+                        <div className="h-28 flex flex-col items-center justify-center text-center p-4 rounded-xl bg-white/40">
+                          <p className="text-xs text-slate-400">
+                            {t('dashboard.columns.empty')}
+                          </p>
+                        </div>
+                      ) : (
+                        colTasks.map((task, index) => (
+                          <Draggable
+                            key={task.id}
+                            draggableId={task.id}
+                            index={index}
+                          >
+                            {(provided, snapshot) => (
+                              <div
+                                ref={provided.innerRef}
+                                {...provided.draggableProps}
+                                className={cn(
+                                  'bg-white rounded-xl p-4 shadow-xs transition-all cursor-pointer group',
+                                  snapshot.isDragging
+                                    ? 'shadow-xl ring-2 ring-brand-500 rotate-1 scale-[1.02] z-50'
+                                    : 'hover:shadow-md hover:-translate-y-0.5',
+                                )}
+                                onClick={() => handleCardClick(task)}
+                              >
+                                <div className="flex items-start justify-between gap-2 mb-2">
+                                  <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                                    <div
+                                      {...provided.dragHandleProps}
+                                      className="text-slate-300 hover:text-slate-600 cursor-grab active:cursor-grabbing p-0.5 -ml-1 rounded transition"
+                                      onClick={(e) => e.stopPropagation()}
+                                      title="Drag task"
+                                    >
+                                      <GripVertical className="w-3.5 h-3.5" />
+                                    </div>
+                                    <span className="text-sm font-semibold text-slate-900 group-hover:text-brand-600 transition-colors truncate">
+                                      {task.title}
+                                    </span>
+                                  </div>
+                                  {getPriorityBadge(task.priority)}
+                                </div>
 
-                      <div className="flex items-center justify-between pt-2.5 border-t border-slate-50 text-[11px] text-slate-400">
-                        <div className="flex items-center gap-1.5">
-                          <User className="w-3 h-3 text-slate-400" />
-                          <span className="text-slate-600 font-medium">
-                            {task.assignee || t('dashboard.unassigned')}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Calendar className="w-3 h-3" />
-                          <span>{task.createdAt}</span>
-                        </div>
-                      </div>
+                                {task.description && (
+                                  <p className="text-xs text-slate-500 line-clamp-2 mb-3 leading-relaxed">
+                                    {task.description}
+                                  </p>
+                                )}
+
+                                <div className="flex items-center justify-between pt-2.5 border-t border-slate-50 text-[11px] text-slate-400">
+                                  <div className="flex items-center gap-1.5">
+                                    <User className="w-3 h-3 text-slate-400" />
+                                    <span className="text-slate-600 font-medium">
+                                      {task.assignee?.name ||
+                                        t('dashboard.unassigned')}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    <Calendar className="w-3 h-3" />
+                                    <span>{formatDate(task.createdAt)}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </Draggable>
+                        ))
+                      )}
+                      {provided.placeholder}
                     </div>
-                  ))
-                )}
+                  )}
+                </Droppable>
               </div>
-            </div>
-          )
-        })}
-      </div>
+            )
+          })}
+        </div>
+      </DragDropContext>
 
-      {/* Create Task Modal */}
-      <Modal
-        id="create-task-modal"
+      {/* Task Creation & Edit Modal */}
+      <TaskModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title={t('dashboard.modal.title')}
-        description={t('dashboard.modal.description')}
-      >
-        <form onSubmit={handleCreateTask} className="space-y-4">
-          <Input
-            id="task-title-input"
-            label={t('dashboard.modal.taskTitle')}
-            placeholder={t('dashboard.modal.taskTitlePlaceholder')}
-            value={newTitle}
-            onChange={(e) => setNewTitle(e.target.value)}
-            required
-          />
-
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold text-slate-700 tracking-wide uppercase">
-              {t('dashboard.modal.descriptionLabel')}
-            </label>
-            <textarea
-              id="task-description-input"
-              rows={3}
-              placeholder={t('dashboard.modal.descriptionPlaceholder')}
-              value={newDescription}
-              onChange={(e) => setNewDescription(e.target.value)}
-              className="w-full rounded-lg border border-slate-200 p-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500 hover:border-slate-300 transition"
-            />
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold text-slate-700 tracking-wide uppercase">
-              {t('dashboard.modal.priorityLabel')}
-            </label>
-            <select
-              id="task-priority-select"
-              value={newPriority}
-              onChange={(e) => setNewPriority(e.target.value as 'LOW' | 'MEDIUM' | 'HIGH')}
-              className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white"
-            >
-              <option value="LOW">{t('dashboard.priorities.low')}</option>
-              <option value="MEDIUM">{t('dashboard.priorities.medium')}</option>
-              <option value="HIGH">{t('dashboard.priorities.high')}</option>
-            </select>
-          </div>
-
-          <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setIsModalOpen(false)}
-            >
-              {t('dashboard.modal.cancelButton')}
-            </Button>
-            <Button id="submit-new-task-btn" type="submit" variant="primary">
-              {t('dashboard.modal.submitButton')}
-            </Button>
-          </div>
-        </form>
-      </Modal>
+        onClose={() => {
+          setIsModalOpen(false)
+          setEditingTask(null)
+        }}
+        onSubmit={handleFormSubmit}
+        initialTask={editingTask}
+        isLoading={isSubmitting}
+      />
     </div>
   )
 }

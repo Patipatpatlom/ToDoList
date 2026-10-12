@@ -25,6 +25,13 @@ apiClient.interceptors.request.use(
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`
     }
+
+    // Attach x-user-id header for workspace member authentication
+    const user = storage.getUser<{ id: string }>()
+    const userId = user?.id || localStorage.getItem('x-user-id') || '7217035a-7369-481a-b37e-7e22cc2d68c8'
+    if (userId && config.headers) {
+      config.headers['x-user-id'] = userId
+    }
     return config
   },
   (error: AxiosError) => {
