@@ -67,4 +67,14 @@ export const taskService = {
     )
     return response.data.data
   },
+
+  /**
+   * Delete a task by ID
+   */
+  async deleteTask(
+    taskId: string,
+    workspaceId: string = DEFAULT_WORKSPACE_ID,
+  ): Promise<void> {
+    await apiClient.delete(`/workspaces/${workspaceId}/tasks/${taskId}`)
+  },
 }

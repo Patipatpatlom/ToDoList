@@ -113,6 +113,15 @@ export class TaskService {
       newStatus,
     });
   }
+
+  async deleteTask(workspaceId: string, taskId: string, userId: string): Promise<void> {
+    await this.ensureWorkspaceMember(workspaceId, userId);
+    const existingTask = await this.repo.findTaskById(taskId, workspaceId);
+    if (!existingTask) {
+      throw new NotFoundError(`Task with ID ${taskId} not found in this workspace`);
+    }
+    await this.repo.deleteTask(taskId, workspaceId);
+  }
 }
 
 export const taskService = new TaskService();

@@ -1,10 +1,12 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { Toaster } from 'sonner'
 import { Layout } from './components/Layout'
 import { LoginPage, RegisterPage, DashboardPage } from './pages'
 
 export function App() {
   return (
     <BrowserRouter>
+      <Toaster position="top-right" richColors closeButton />
       <Routes>
         {/* Public Authentication Routes */}
         <Route path="/login" element={<LoginPage />} />

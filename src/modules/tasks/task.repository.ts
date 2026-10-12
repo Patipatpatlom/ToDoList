@@ -155,6 +155,15 @@ export class TaskRepository {
       return updatedTask;
     });
   }
+
+  async deleteTask(taskId: string, workspaceId: string): Promise<void> {
+    await prisma.task.delete({
+      where: {
+        id: taskId,
+        workspaceId,
+      },
+    });
+  }
 }
 
 export const taskRepository = new TaskRepository();

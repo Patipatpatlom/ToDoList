@@ -68,6 +68,23 @@ export class TaskController {
       next(error);
     }
   };
+
+  deleteTask = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const userId = this.getAuthenticatedUserId(req);
+      const workspaceId = req.params.workspaceId as string;
+      const taskId = req.params.taskId as string;
+
+      await this.service.deleteTask(workspaceId, taskId, userId);
+
+      res.status(200).json({
+        success: true,
+        message: 'Task deleted successfully',
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
 }
 
 export const taskController = new TaskController();

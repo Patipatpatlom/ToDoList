@@ -73,6 +73,18 @@
       "priorityLabel": "ระดับความสำคัญ",
       "submitButton": "สร้างงาน",
       "cancelButton": "ยกเลิก"
+    },
+    "deleteModal": {
+      "title": "ยืนยันการลบงาน",
+      "message": "ต้องการลบ Task นี้ใช่หรือไม่?",
+      "confirm": "ลบงาน",
+      "cancel": "ยกเลิก"
+    },
+    "toast": {
+      "createSuccess": "สร้าง Task สำเร็จ",
+      "updateStatusSuccess": "อัปเดตสถานะสำเร็จ",
+      "deleteSuccess": "ลบ Task สำเร็จ",
+      "error": "เกิดข้อผิดพลาดในการดำเนินการ"
     }
   }
 }

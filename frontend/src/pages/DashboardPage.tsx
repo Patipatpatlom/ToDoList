@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import {
   DragDropContext,
   Droppable,
@@ -19,10 +19,13 @@ import {
   Layers,
   Loader2,
   GripVertical,
+  Trash2,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
 import { Button } from '../components/Button'
 import { TaskModal, type TaskFormValues } from '../components/TaskModal'
+import { ConfirmModal } from '../components/ConfirmModal'
 import { useTaskStore } from '../store/taskStore'
 import { type Task } from '../services/taskService'
 import { cn } from '../utils/cn'
@@ -33,23 +36,38 @@ export const DashboardPage: React.FC = () => {
     tasks,
     isLoading,
     isSubmitting,
+    searchQuery,
+    priorityFilter,
+    setSearchQuery,
+    setPriorityFilter,
     fetchTasks,
     createTask,
     updateTaskStatusOptimistic,
+    deleteTask,
   } = useTaskStore()
 
-  const [searchQuery, setSearchQuery] = useState('')
-  const [selectedPriority, setSelectedPriority] = useState<string>('ALL')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingTask, setEditingTask] = useState<Task | null>(null)
+  const [taskToDelete, setTaskToDelete] = useState<Task | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   // Fetch live tasks on mount
   useEffect(() => {
     fetchTasks()
   }, [fetchTasks])
 
-  // Drag & Drop Handler with Optimistic UI Update
-  const handleDragEnd = (result: DropResult) => {
+  // Dynamic Reactive Summary Statistics
+  const stats = useMemo(() => {
+    const total = tasks.length
+    const inProgress = tasks.filter((t) => t.status === 'IN_PROGRESS').length
+    const completed = tasks.filter((t) => t.status === 'DONE').length
+    const highPriority = tasks.filter((t) => t.priority === 'HIGH').length
+
+    return { total, inProgress, completed, highPriority }
+  }, [tasks])
+
+  // Drag & Drop Handler with Optimistic UI Update and Toast Notification
+  const handleDragEnd = async (result: DropResult) => {
     const { destination, source, draggableId } = result
     if (!destination) return
 
@@ -62,33 +80,66 @@ export const DashboardPage: React.FC = () => {
     }
 
     const newStatus = destination.droppableId as 'TODO' | 'IN_PROGRESS' | 'DONE'
-    updateTaskStatusOptimistic(draggableId, newStatus)
+    try {
+      await updateTaskStatusOptimistic(draggableId, newStatus)
+      toast.success(t('dashboard.toast.updateStatusSuccess'))
+    } catch {
+      toast.error(t('dashboard.toast.error'))
+    }
   }
 
   // Handle Create or Edit task submit
   const handleFormSubmit = async (values: TaskFormValues) => {
-    if (editingTask) {
-      // In this phase, editing updates local task state
-      // (or PATCH endpoint when available)
-      const currentTasks = useTaskStore.getState().tasks
-      const updated = currentTasks.map((t) =>
-        t.id === editingTask.id
-          ? {
-              ...t,
-              title: values.title,
-              description: values.description || null,
-              priority: values.priority,
-            }
-          : t,
-      )
-      useTaskStore.getState().setTasks(updated)
+    try {
+      if (editingTask) {
+        // Update local task state in this phase
+        const currentTasks = useTaskStore.getState().tasks
+        const updated = currentTasks.map((t) =>
+          t.id === editingTask.id
+            ? {
+                ...t,
+                title: values.title,
+                description: values.description || null,
+                priority: values.priority,
+              }
+            : t,
+        )
+        useTaskStore.getState().setTasks(updated)
+        toast.success(t('common.save'))
+        setEditingTask(null)
+      } else {
+        await createTask({
+          title: values.title,
+          description: values.description,
+          priority: values.priority,
+        })
+        toast.success(t('dashboard.toast.createSuccess'))
+      }
+    } catch {
+      toast.error(t('dashboard.toast.error'))
+    }
+  }
+
+  // Trigger Delete Confirmation
+  const handleDeleteTask = (task: Task, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation()
+    setTaskToDelete(task)
+  }
+
+  // Confirm and execute task deletion
+  const handleConfirmDelete = async () => {
+    if (!taskToDelete) return
+    setIsDeleting(true)
+    try {
+      await deleteTask(taskToDelete.id)
+      toast.success(t('dashboard.toast.deleteSuccess'))
+      setTaskToDelete(null)
+      setIsModalOpen(false)
       setEditingTask(null)
-    } else {
-      await createTask({
-        title: values.title,
-        description: values.description,
-        priority: values.priority,
-      })
+    } catch {
+      toast.error(t('dashboard.toast.error'))
+    } finally {
+      setIsDeleting(false)
     }
   }
 
@@ -102,17 +153,21 @@ export const DashboardPage: React.FC = () => {
     setIsModalOpen(true)
   }
 
-  // Search & Filter computation
-  const filteredTasks = tasks.filter((task) => {
-    const titleMatch = task.title.toLowerCase().includes(searchQuery.toLowerCase())
-    const descMatch =
-      task.description &&
-      task.description.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesSearch = titleMatch || Boolean(descMatch)
-    const matchesPriority =
-      selectedPriority === 'ALL' || task.priority === selectedPriority
-    return matchesSearch && matchesPriority
-  })
+  // Search & Filter computation (Derived State)
+  const filteredTasks = useMemo(() => {
+    return tasks.filter((task) => {
+      const titleMatch = task.title
+        .toLowerCase()
+        .includes(searchQuery.toLowerCase())
+      const descMatch =
+        task.description &&
+        task.description.toLowerCase().includes(searchQuery.toLowerCase())
+      const matchesSearch = titleMatch || Boolean(descMatch)
+      const matchesPriority =
+        priorityFilter === 'ALL' || task.priority === priorityFilter
+      return matchesSearch && matchesPriority
+    })
+  }, [tasks, searchQuery, priorityFilter])
 
   const getPriorityBadge = (priority: Task['priority']) => {
     switch (priority) {
@@ -213,7 +268,7 @@ export const DashboardPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Summary KPI Cards */}
+      {/* Dynamic Reactive Summary KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {/* Total Tasks */}
         <div className="bg-white rounded-xl p-4 shadow-xs hover:shadow-sm transition-shadow relative overflow-hidden">
@@ -221,7 +276,7 @@ export const DashboardPage: React.FC = () => {
             {t('dashboard.kpi.totalTasks')}
           </span>
           <div className="text-2xl font-bold text-slate-900 mt-1">
-            {tasks.length}
+            {stats.total}
           </div>
           <Layers className="w-10 h-10 absolute -right-1 -bottom-1 text-slate-100 pointer-events-none" />
         </div>
@@ -232,7 +287,7 @@ export const DashboardPage: React.FC = () => {
             {t('dashboard.kpi.inProgress')}
           </span>
           <div className="text-2xl font-bold text-brand-600 mt-1">
-            {tasks.filter((t) => t.status === 'IN_PROGRESS').length}
+            {stats.inProgress}
           </div>
           <Clock className="w-10 h-10 absolute -right-1 -bottom-1 text-brand-100/70 pointer-events-none" />
         </div>
@@ -243,7 +298,7 @@ export const DashboardPage: React.FC = () => {
             {t('dashboard.kpi.completed')}
           </span>
           <div className="text-2xl font-bold text-emerald-600 mt-1">
-            {tasks.filter((t) => t.status === 'DONE').length}
+            {stats.completed}
           </div>
           <CheckCircle2 className="w-10 h-10 absolute -right-1 -bottom-1 text-emerald-100/70 pointer-events-none" />
         </div>
@@ -254,13 +309,13 @@ export const DashboardPage: React.FC = () => {
             {t('dashboard.kpi.highPriority')}
           </span>
           <div className="text-2xl font-bold text-red-600 mt-1">
-            {tasks.filter((t) => t.priority === 'HIGH').length}
+            {stats.highPriority}
           </div>
           <AlertTriangle className="w-10 h-10 absolute -right-1 -bottom-1 text-red-100/70 pointer-events-none" />
         </div>
       </div>
 
-      {/* Filter and Search Bar */}
+      {/* Filter and Search Bar (Bound to State) */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white p-2.5 rounded-xl shadow-xs">
         <div className="relative flex-1 max-w-md">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -281,8 +336,8 @@ export const DashboardPage: React.FC = () => {
           </span>
           <select
             id="dashboard-priority-filter"
-            value={selectedPriority}
-            onChange={(e) => setSelectedPriority(e.target.value)}
+            value={priorityFilter}
+            onChange={(e) => setPriorityFilter(e.target.value)}
             className="text-xs font-medium py-1.5 px-3 rounded-lg bg-slate-50 text-slate-700 border-0 focus:ring-2 focus:ring-brand-500 cursor-pointer"
           >
             <option value="ALL">{t('dashboard.priorities.all')}</option>
@@ -345,7 +400,7 @@ export const DashboardPage: React.FC = () => {
                                 ref={provided.innerRef}
                                 {...provided.draggableProps}
                                 className={cn(
-                                  'bg-white rounded-xl p-4 shadow-xs transition-all cursor-pointer group',
+                                  'bg-white rounded-xl p-4 shadow-xs transition-all cursor-pointer group relative',
                                   snapshot.isDragging
                                     ? 'shadow-xl ring-2 ring-brand-500 rotate-1 scale-[1.02] z-50'
                                     : 'hover:shadow-md hover:-translate-y-0.5',
@@ -366,7 +421,19 @@ export const DashboardPage: React.FC = () => {
                                       {task.title}
                                     </span>
                                   </div>
-                                  {getPriorityBadge(task.priority)}
+                                  <div className="flex items-center gap-1.5">
+                                    {getPriorityBadge(task.priority)}
+                                    {/* Quick Delete Trash Button */}
+                                    <button
+                                      id={`delete-task-btn-${task.id}`}
+                                      type="button"
+                                      onClick={(e) => handleDeleteTask(task, e)}
+                                      className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-all"
+                                      title="Delete task"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
                                 </div>
 
                                 {task.description && (
@@ -413,6 +480,20 @@ export const DashboardPage: React.FC = () => {
         onSubmit={handleFormSubmit}
         initialTask={editingTask}
         isLoading={isSubmitting}
+        onDelete={(task) => handleDeleteTask(task)}
+      />
+
+      {/* Confirmation Dialog for Deletion */}
+      <ConfirmModal
+        isOpen={Boolean(taskToDelete)}
+        onClose={() => setTaskToDelete(null)}
+        onConfirm={handleConfirmDelete}
+        title={t('dashboard.deleteModal.title')}
+        message={t('dashboard.deleteModal.message')}
+        itemName={taskToDelete?.title}
+        confirmText={t('dashboard.deleteModal.confirm')}
+        cancelText={t('dashboard.deleteModal.cancel')}
+        isLoading={isDeleting}
       />
     </div>
   )

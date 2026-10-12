@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useTranslation } from 'react-i18next'
+import { Trash2 } from 'lucide-react'
 import { Modal } from './Modal'
 import { Button } from './Button'
 import { Input } from './Input'
@@ -30,6 +31,7 @@ export interface TaskModalProps {
   onSubmit: (values: TaskFormValues) => Promise<void>
   initialTask?: Task | null
   isLoading?: boolean
+  onDelete?: (task: Task) => void
 }
 
 export const TaskModal: React.FC<TaskModalProps> = ({
@@ -38,6 +40,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   onSubmit,
   initialTask,
   isLoading = false,
+  onDelete,
 }) => {
   const { t } = useTranslation()
 
@@ -149,24 +152,41 @@ export const TaskModal: React.FC<TaskModalProps> = ({
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-slate-100">
-          <Button
-            id="task-modal-cancel-btn"
-            type="button"
-            variant="outline"
-            onClick={onClose}
-            disabled={isLoading}
-          >
-            {t('dashboard.modal.cancelButton')}
-          </Button>
-          <Button
-            id="task-modal-submit-btn"
-            type="submit"
-            variant="primary"
-            isLoading={isLoading}
-          >
-            {initialTask ? t('common.save') : t('dashboard.modal.submitButton')}
-          </Button>
+        <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+          <div>
+            {initialTask && onDelete && (
+              <Button
+                id="task-modal-delete-btn"
+                type="button"
+                variant="ghost"
+                className="text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+                onClick={() => onDelete(initialTask)}
+                leftIcon={<Trash2 className="w-4 h-4" />}
+              >
+                {t('common.delete')}
+              </Button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2.5">
+            <Button
+              id="task-modal-cancel-btn"
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              disabled={isLoading}
+            >
+              {t('dashboard.modal.cancelButton')}
+            </Button>
+            <Button
+              id="task-modal-submit-btn"
+              type="submit"
+              variant="primary"
+              isLoading={isLoading}
+            >
+              {initialTask ? t('common.save') : t('dashboard.modal.submitButton')}
+            </Button>
+          </div>
         </div>
       </form>
     </Modal>

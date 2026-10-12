@@ -13,13 +13,20 @@ interface TaskState {
   error: string | null
   activeWorkspaceId: string
 
+  // Search & Filter State
+  searchQuery: string
+  priorityFilter: string
+
   // Actions
+  setSearchQuery: (query: string) => void
+  setPriorityFilter: (priority: string) => void
   fetchTasks: (workspaceId?: string) => Promise<void>
   createTask: (data: CreateTaskDTO) => Promise<Task>
   updateTaskStatusOptimistic: (
     taskId: string,
     newStatus: 'TODO' | 'IN_PROGRESS' | 'DONE',
   ) => Promise<void>
+  deleteTask: (taskId: string) => Promise<void>
   setTasks: (tasks: Task[]) => void
 }
 
@@ -29,6 +36,12 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   isSubmitting: false,
   error: null,
   activeWorkspaceId: DEFAULT_WORKSPACE_ID,
+
+  searchQuery: '',
+  priorityFilter: 'ALL',
+
+  setSearchQuery: (query: string) => set({ searchQuery: query }),
+  setPriorityFilter: (priority: string) => set({ priorityFilter: priority }),
 
   setTasks: (tasks: Task[]) => set({ tasks }),
 
@@ -95,6 +108,22 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       console.error('Failed to update task status on backend, rolling back state', err)
       // Rollback to previous state if API call failed
       set({ tasks: previousTasks, error: 'Failed to update task status on server' })
+      throw err
+    }
+  },
+
+  deleteTask: async (taskId) => {
+    const previousTasks = get().tasks
+    // Optimistic UI update: remove task immediately
+    set({ tasks: previousTasks.filter((t) => t.id !== taskId) })
+
+    try {
+      await taskService.deleteTask(taskId, get().activeWorkspaceId)
+    } catch (err) {
+      console.error('Failed to delete task from backend, rolling back state', err)
+      // Rollback if deletion failed
+      set({ tasks: previousTasks, error: 'Failed to delete task on server' })
+      throw err
     }
   },
 }))

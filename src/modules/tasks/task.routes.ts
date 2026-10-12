@@ -40,3 +40,12 @@ taskRouter.patch(
   }),
   taskController.updateTaskStatus
 );
+
+// DELETE /api/v1/workspaces/:workspaceId/tasks/:taskId
+taskRouter.delete(
+  '/workspaces/:workspaceId/tasks/:taskId',
+  validate({
+    params: taskParamsSchema,
+  }),
+  taskController.deleteTask
+);
