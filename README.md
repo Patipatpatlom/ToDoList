@@ -96,6 +96,10 @@ curl http://localhost:3000/api/v1/health
 | `npm run db:migrate`   | Run Prisma database migrations                           |
 | `npm run db:seed`      | Seed database with mock data                             |
 | `npm run db:studio`    | Launch Prisma Studio GUI                                 |
+| `npm run test`         | Run all unit and integration tests with Vitest           |
+| `npm run test:e2e`     | Run Supertest integration tests                          |
+| `npm run test:unit`    | Run isolated unit tests                                  |
+| `npm run test:watch`   | Run Vitest in watch mode                                 |
 | `npm run lint`         | Run ESLint check                                         |
 | `npm run lint:fix`     | Run ESLint with auto-fix                                 |
 | `npm run format`       | Format codebase with Prettier                            |
