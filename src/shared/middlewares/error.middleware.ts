@@ -10,8 +10,6 @@ export const errorHandler: ErrorRequestHandler = (
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   next: NextFunction
 ): void => {
-  const isDevelopment = process.env.NODE_ENV === 'development';
-
   // 1. Handled AppError instances
   if (err instanceof AppError) {
     if (err.statusCode >= 500) {
@@ -35,20 +33,20 @@ export const errorHandler: ErrorRequestHandler = (
     res.status(err.statusCode).json({
       success: false,
       error: {
-        message: err.message,
         code: err.code,
-        ...(err.details ? { details: err.details } : {}),
+        message: err.message,
+        ...(err.details !== undefined ? { details: err.details } : {}),
       },
     });
     return;
   }
 
-  // 2. Direct Zod validation errors
+  // 2. Direct Zod validation errors (fallback if unhandled before middleware)
   if (err instanceof ZodError) {
     const formattedErrors = err.issues.map((issue) => ({
-      path: issue.path.join('.'),
+      field: issue.path.join('.'),
       message: issue.message,
-      code: issue.code,
+      rule: issue.code,
     }));
 
     logger.warn('Zod Validation Failure', {
@@ -61,15 +59,15 @@ export const errorHandler: ErrorRequestHandler = (
     res.status(400).json({
       success: false,
       error: {
-        message: 'Validation failed',
         code: 'VALIDATION_ERROR',
+        message: 'Validation failed',
         details: formattedErrors,
       },
     });
     return;
   }
 
-  // 3. Unhandled unexpected errors
+  // 3. Unhandled unexpected errors (500)
   logger.error('Unhandled Exception Caught', {
     message: err.message,
     name: err.name,
@@ -81,9 +79,7 @@ export const errorHandler: ErrorRequestHandler = (
   res.status(500).json({
     success: false,
     error: {
-      message: isDevelopment ? err.message : 'Internal server error',
-      code: 'INTERNAL_SERVER_ERROR',
-      ...(isDevelopment && err.stack ? { stack: err.stack } : {}),
+      message: 'Internal Server Error',
     },
   });
 };

@@ -1,14 +1,9 @@
 import { HealthRepository, healthRepository } from '@/repositories/health.repository.js';
 
 export interface HealthCheckResult {
-  status: 'healthy' | 'degraded';
-  uptimeSeconds: number;
+  status: 'ok' | 'error';
+  db: 'connected' | 'disconnected';
   timestamp: string;
-  environment: string;
-  database: {
-    status: 'connected' | 'disconnected';
-    latencyMs?: number;
-  };
 }
 
 export class HealthService {
@@ -16,30 +11,19 @@ export class HealthService {
 
   async checkHealth(): Promise<HealthCheckResult> {
     const timestamp = new Date().toISOString();
-    const uptimeSeconds = Number(process.uptime().toFixed(2));
-    const environment = process.env.NODE_ENV || 'development';
 
     try {
-      const dbResult = await this.repo.pingDatabase();
+      await this.repo.pingDatabase();
       return {
-        status: 'healthy',
-        uptimeSeconds,
+        status: 'ok',
+        db: 'connected',
         timestamp,
-        environment,
-        database: {
-          status: 'connected',
-          latencyMs: dbResult.latencyMs,
-        },
       };
     } catch {
       return {
-        status: 'degraded',
-        uptimeSeconds,
+        status: 'error',
+        db: 'disconnected',
         timestamp,
-        environment,
-        database: {
-          status: 'disconnected',
-        },
       };
     }
   }

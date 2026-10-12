@@ -1,5 +1,6 @@
 import express, { Application } from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
 import { apiRouter } from '@/routes/index.js';
 import { errorHandler, notFoundHandler } from '@/shared/middlewares/error.middleware.js';
 
@@ -7,6 +8,7 @@ export const createApp = (): Application => {
   const app = express();
 
   // Basic security and parsing middlewares
+  app.use(helmet());
   app.use(cors());
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
