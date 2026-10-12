@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
+import { useSearchParams, Link } from 'react-router-dom'
 import {
   DragDropContext,
   Droppable,
@@ -32,6 +33,12 @@ import { cn } from '../utils/cn'
 
 export const DashboardPage: React.FC = () => {
   const { t } = useTranslation()
+  const [searchParams] = useSearchParams()
+  const statusFilterParam = searchParams.get('status') as
+    | 'TODO'
+    | 'IN_PROGRESS'
+    | 'DONE'
+    | null
   const {
     tasks,
     isLoading,
@@ -208,31 +215,42 @@ export const DashboardPage: React.FC = () => {
     }
   }
 
-  const columns: {
-    status: 'TODO' | 'IN_PROGRESS' | 'DONE'
-    label: string
-    icon: React.ReactNode
-    dotColor: string
-  }[] = [
+  const columns = useMemo<
     {
-      status: 'TODO',
-      label: t('dashboard.columns.todo'),
-      icon: <Circle className="w-3.5 h-3.5 text-slate-400" />,
-      dotColor: 'bg-slate-400',
-    },
-    {
-      status: 'IN_PROGRESS',
-      label: t('dashboard.columns.inProgress'),
-      icon: <Clock className="w-3.5 h-3.5 text-brand-500" />,
-      dotColor: 'bg-brand-500',
-    },
-    {
-      status: 'DONE',
-      label: t('dashboard.columns.done'),
-      icon: <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />,
-      dotColor: 'bg-emerald-500',
-    },
-  ]
+      status: 'TODO' | 'IN_PROGRESS' | 'DONE'
+      label: string
+      icon: React.ReactNode
+      dotColor: string
+    }[]
+  >(
+    () => [
+      {
+        status: 'TODO',
+        label: t('dashboard.columns.todo'),
+        icon: <Circle className="w-3.5 h-3.5 text-slate-400" />,
+        dotColor: 'bg-slate-400',
+      },
+      {
+        status: 'IN_PROGRESS',
+        label: t('dashboard.columns.inProgress'),
+        icon: <Clock className="w-3.5 h-3.5 text-brand-500" />,
+        dotColor: 'bg-brand-500',
+      },
+      {
+        status: 'DONE',
+        label: t('dashboard.columns.done'),
+        icon: <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />,
+        dotColor: 'bg-emerald-500',
+      },
+    ],
+    [t],
+  )
+
+  // Filter columns dynamically if a specific status is selected in the Sidebar
+  const activeColumns = useMemo(() => {
+    if (!statusFilterParam) return columns
+    return columns.filter((col) => col.status === statusFilterParam)
+  }, [columns, statusFilterParam])
 
   return (
     <div className="space-y-7 pb-8 select-none">
@@ -348,10 +366,38 @@ export const DashboardPage: React.FC = () => {
         </div>
       </div>
 
+      {/* Filter indicator banner when viewing single status from sidebar */}
+      {statusFilterParam && (
+        <div className="flex items-center justify-between p-3 px-4 rounded-xl bg-brand-50/80 border border-brand-100 text-xs shadow-2xs">
+          <div className="flex items-center gap-2 text-slate-700">
+            <span className="font-medium text-slate-500">
+              {t('dashboard.filteringStatus')}
+            </span>
+            <span className="font-bold text-brand-700 bg-white px-2.5 py-1 rounded-md border border-brand-200 shadow-xs">
+              {columns.find((c) => c.status === statusFilterParam)?.label || statusFilterParam}
+            </span>
+          </div>
+          <Link
+            to="/"
+            className="text-brand-600 hover:text-brand-800 font-semibold hover:underline flex items-center gap-1.5 transition-colors"
+          >
+            <span>{t('dashboard.showAllColumns')}</span>
+            <span>&rarr;</span>
+          </Link>
+        </div>
+      )}
+
       {/* Drag & Drop Kanban Columns */}
       <DragDropContext onDragEnd={handleDragEnd}>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
-          {columns.map((col) => {
+        <div
+          className={cn(
+            'grid gap-6 items-start',
+            activeColumns.length === 1
+              ? 'grid-cols-1 max-w-2xl mx-auto w-full'
+              : 'grid-cols-1 md:grid-cols-3',
+          )}
+        >
+          {activeColumns.map((col) => {
             const colTasks = filteredTasks.filter((t) => t.status === col.status)
             return (
               <div

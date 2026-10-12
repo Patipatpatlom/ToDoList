@@ -33,6 +33,7 @@
     "views": "Views & Status",
     "taskBoard": "Task Board",
     "allTasks": "All Tasks",
+    "todo": "To Do",
     "inProgress": "In Progress",
     "completed": "Completed",
     "settings": "Settings"
@@ -42,6 +43,8 @@
     "subtitle": "Organize, track, and collaborate on workspace tasks in real-time.",
     "phaseBadge": "Phase 2",
     "createTask": "Create Task",
+    "filteringStatus": "Filtered view:",
+    "showAllColumns": "View full board",
     "kpi": {
       "totalTasks": "Total Tasks",
       "inProgress": "In Progress",

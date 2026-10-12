@@ -51,7 +51,6 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       const tasks = await taskService.getTasks(workspaceId)
       set({ tasks, isLoading: false })
     } catch (err: unknown) {
-      console.warn('Failed to fetch tasks from backend, using current/fallback state', err)
       set({
         error: err instanceof Error ? err.message : 'Failed to fetch tasks',
         isLoading: false,
@@ -68,9 +67,8 @@ export const useTaskStore = create<TaskState>((set, get) => ({
         isSubmitting: false,
       }))
       return newTask
-    } catch (err: unknown) {
+    } catch {
       // In case of network/backend issue, provide optimistic local task so UI continues smoothly
-      console.warn('Backend create failed, creating local task as fallback', err)
       const localTask: Task = {
         id: `local-task-${Date.now()}`,
         workspaceId: get().activeWorkspaceId,
@@ -105,7 +103,6 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     try {
       await taskService.updateTaskStatus(taskId, newStatus, get().activeWorkspaceId)
     } catch (err) {
-      console.error('Failed to update task status on backend, rolling back state', err)
       // Rollback to previous state if API call failed
       set({ tasks: previousTasks, error: 'Failed to update task status on server' })
       throw err
@@ -120,7 +117,6 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     try {
       await taskService.deleteTask(taskId, get().activeWorkspaceId)
     } catch (err) {
-      console.error('Failed to delete task from backend, rolling back state', err)
       // Rollback if deletion failed
       set({ tasks: previousTasks, error: 'Failed to delete task on server' })
       throw err
