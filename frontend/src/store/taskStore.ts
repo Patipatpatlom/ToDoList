@@ -99,6 +99,45 @@ const INITIAL_PERSONAL_TASKS: Task[] = [
   },
 ]
 
+const TASKS_STORAGE_KEY = 'taskflow_workspace_tasks'
+const WORKSPACES_STORAGE_KEY = 'taskflow_workspaces'
+
+function loadSavedTasksMap(): Record<string, Task[]> | null {
+  try {
+    const raw = localStorage.getItem(TASKS_STORAGE_KEY)
+    if (raw) return JSON.parse(raw)
+  } catch {
+    // ignore
+  }
+  return null
+}
+
+function saveTasksMap(map: Record<string, Task[]>): void {
+  try {
+    localStorage.setItem(TASKS_STORAGE_KEY, JSON.stringify(map))
+  } catch {
+    // ignore
+  }
+}
+
+function loadSavedWorkspaces(): WorkspaceItem[] | null {
+  try {
+    const raw = localStorage.getItem(WORKSPACES_STORAGE_KEY)
+    if (raw) return JSON.parse(raw)
+  } catch {
+    // ignore
+  }
+  return null
+}
+
+function saveWorkspaces(workspaces: WorkspaceItem[]): void {
+  try {
+    localStorage.setItem(WORKSPACES_STORAGE_KEY, JSON.stringify(workspaces))
+  } catch {
+    // ignore
+  }
+}
+
 interface TaskState {
   tasks: Task[]
   workspaceTasksMap: Record<string, Task[]>
@@ -120,6 +159,15 @@ interface TaskState {
   switchWorkspace: (workspace: WorkspaceItem) => Promise<void>
   addWorkspace: (workspace: WorkspaceItem) => void
   createTask: (data: CreateTaskDTO) => Promise<Task>
+  updateTask: (
+    taskId: string,
+    data: {
+      title?: string
+      description?: string | null
+      priority?: 'LOW' | 'MEDIUM' | 'HIGH'
+      assigneeName?: string | null
+    },
+  ) => Promise<Task | null>
   updateTaskStatusOptimistic: (
     taskId: string,
     newStatus: 'TODO' | 'IN_PROGRESS' | 'DONE',
@@ -128,19 +176,22 @@ interface TaskState {
   setTasks: (tasks: Task[]) => void
 }
 
+const initialSavedWorkspaces = loadSavedWorkspaces() || DEFAULT_WORKSPACES
+const initialSavedMap = loadSavedTasksMap() || {
+  [DEFAULT_WORKSPACE_ID]: [],
+  'ws-marketing': INITIAL_MARKETING_TASKS,
+  'ws-personal': INITIAL_PERSONAL_TASKS,
+}
+
 export const useTaskStore = create<TaskState>((set, get) => ({
-  tasks: [],
-  workspaceTasksMap: {
-    [DEFAULT_WORKSPACE_ID]: [],
-    'ws-marketing': INITIAL_MARKETING_TASKS,
-    'ws-personal': INITIAL_PERSONAL_TASKS,
-  },
-  workspaces: DEFAULT_WORKSPACES,
-  activeWorkspace: DEFAULT_WORKSPACES[0],
+  tasks: initialSavedMap[DEFAULT_WORKSPACE_ID] || [],
+  workspaceTasksMap: initialSavedMap,
+  workspaces: initialSavedWorkspaces,
+  activeWorkspace: initialSavedWorkspaces[0] || DEFAULT_WORKSPACES[0],
   isLoading: false,
   isSubmitting: false,
   error: null,
-  activeWorkspaceId: DEFAULT_WORKSPACE_ID,
+  activeWorkspaceId: initialSavedWorkspaces[0]?.id || DEFAULT_WORKSPACE_ID,
 
   searchQuery: '',
   priorityFilter: 'ALL',
@@ -150,13 +201,15 @@ export const useTaskStore = create<TaskState>((set, get) => ({
 
   setTasks: (tasks: Task[]) => {
     const wsId = get().activeWorkspaceId
-    set((state) => ({
+    const newMap = {
+      ...get().workspaceTasksMap,
+      [wsId]: tasks,
+    }
+    set({
       tasks,
-      workspaceTasksMap: {
-        ...state.workspaceTasksMap,
-        [wsId]: tasks,
-      },
-    }))
+      workspaceTasksMap: newMap,
+    })
+    saveTasksMap(newMap)
   },
 
   switchWorkspace: async (workspace: WorkspaceItem) => {
@@ -179,16 +232,20 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   },
 
   addWorkspace: (newWs: WorkspaceItem) => {
-    set((state) => ({
-      workspaces: [...state.workspaces, newWs],
-      workspaceTasksMap: {
-        ...state.workspaceTasksMap,
-        [newWs.id]: [],
-      },
+    const updatedWorkspaces = [...get().workspaces, newWs]
+    const updatedMap = {
+      ...get().workspaceTasksMap,
+      [newWs.id]: [],
+    }
+    set({
+      workspaces: updatedWorkspaces,
+      workspaceTasksMap: updatedMap,
       activeWorkspace: newWs,
       activeWorkspaceId: newWs.id,
       tasks: [],
-    }))
+    })
+    saveWorkspaces(updatedWorkspaces)
+    saveTasksMap(updatedMap)
   },
 
   fetchTasks: async (workspaceId = get().activeWorkspaceId) => {
@@ -196,20 +253,22 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     try {
       if (workspaceId === DEFAULT_WORKSPACE_ID) {
         const tasks = await taskService.getTasks(workspaceId)
-        set((state) => ({
+        const updatedMap = {
+          ...get().workspaceTasksMap,
+          [DEFAULT_WORKSPACE_ID]: tasks,
+        }
+        set({
           tasks,
           isLoading: false,
-          workspaceTasksMap: {
-            ...state.workspaceTasksMap,
-            [DEFAULT_WORKSPACE_ID]: tasks,
-          },
-        }))
+          workspaceTasksMap: updatedMap,
+        })
+        saveTasksMap(updatedMap)
       } else {
         const cached = get().workspaceTasksMap[workspaceId] || []
         set({ tasks: cached, isLoading: false })
       }
     } catch (err: unknown) {
-      // In case of error, retrieve cached tasks if available
+      // In case of network error, retrieve cached tasks from localStorage
       const fallbackTasks = get().workspaceTasksMap[workspaceId] || get().tasks
       set({
         tasks: fallbackTasks,
@@ -222,21 +281,22 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   createTask: async (data: CreateTaskDTO) => {
     set({ isSubmitting: true, error: null })
     const activeWsId = get().activeWorkspaceId
+    const trimmedName = data.assigneeName?.trim()
 
     try {
       if (activeWsId === DEFAULT_WORKSPACE_ID) {
         const newTask = await taskService.createTask(data, activeWsId)
-        set((state) => {
-          const updated = [newTask, ...state.tasks]
-          return {
-            tasks: updated,
-            workspaceTasksMap: {
-              ...state.workspaceTasksMap,
-              [activeWsId]: updated,
-            },
-            isSubmitting: false,
-          }
+        const updated = [newTask, ...get().tasks]
+        const updatedMap = {
+          ...get().workspaceTasksMap,
+          [activeWsId]: updated,
+        }
+        set({
+          tasks: updated,
+          workspaceTasksMap: updatedMap,
+          isSubmitting: false,
         })
+        saveTasksMap(updatedMap)
         return newTask
       } else {
         // Local workspace creation
@@ -247,21 +307,24 @@ export const useTaskStore = create<TaskState>((set, get) => ({
           description: data.description || '',
           status: 'TODO',
           priority: data.priority || 'MEDIUM',
-          assigneeId: data.assigneeId || null,
+          assigneeId: trimmedName ? `assignee-${Date.now()}` : null,
+          assignee: trimmedName
+            ? { id: `assignee-${Date.now()}`, name: trimmedName, email: '' }
+            : null,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         }
-        set((state) => {
-          const updated = [localTask, ...state.tasks]
-          return {
-            tasks: updated,
-            workspaceTasksMap: {
-              ...state.workspaceTasksMap,
-              [activeWsId]: updated,
-            },
-            isSubmitting: false,
-          }
+        const updated = [localTask, ...get().tasks]
+        const updatedMap = {
+          ...get().workspaceTasksMap,
+          [activeWsId]: updated,
+        }
+        set({
+          tasks: updated,
+          workspaceTasksMap: updatedMap,
+          isSubmitting: false,
         })
+        saveTasksMap(updatedMap)
         return localTask
       }
     } catch {
@@ -272,22 +335,100 @@ export const useTaskStore = create<TaskState>((set, get) => ({
         description: data.description || '',
         status: 'TODO',
         priority: data.priority || 'MEDIUM',
-        assigneeId: data.assigneeId || null,
+        assigneeId: trimmedName ? `assignee-${Date.now()}` : null,
+        assignee: trimmedName
+          ? { id: `assignee-${Date.now()}`, name: trimmedName, email: '' }
+          : null,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       }
-      set((state) => {
-        const updated = [localTask, ...state.tasks]
-        return {
-          tasks: updated,
-          workspaceTasksMap: {
-            ...state.workspaceTasksMap,
-            [activeWsId]: updated,
-          },
-          isSubmitting: false,
-        }
+      const updated = [localTask, ...get().tasks]
+      const updatedMap = {
+        ...get().workspaceTasksMap,
+        [activeWsId]: updated,
+      }
+      set({
+        tasks: updated,
+        workspaceTasksMap: updatedMap,
+        isSubmitting: false,
       })
+      saveTasksMap(updatedMap)
       return localTask
+    }
+  },
+
+  updateTask: async (taskId, data) => {
+    set({ isSubmitting: true, error: null })
+    const activeWsId = get().activeWorkspaceId
+    const previousTasks = get().tasks
+
+    // 1. Optimistic update
+    const updatedTasks = previousTasks.map((t) => {
+      if (t.id !== taskId) return t
+      return {
+        ...t,
+        title: data.title !== undefined ? data.title : t.title,
+        description:
+          data.description !== undefined ? data.description : t.description,
+        priority: data.priority !== undefined ? data.priority : t.priority,
+        assignee:
+          data.assigneeName !== undefined
+            ? data.assigneeName?.trim()
+              ? {
+                  id: t.assignee?.id || `assignee-${Date.now()}`,
+                  name: data.assigneeName.trim(),
+                  email: t.assignee?.email || '',
+                }
+              : null
+            : t.assignee,
+      }
+    })
+
+    const updatedMap = {
+      ...get().workspaceTasksMap,
+      [activeWsId]: updatedTasks,
+    }
+    set({
+      tasks: updatedTasks,
+      workspaceTasksMap: updatedMap,
+    })
+    saveTasksMap(updatedMap)
+
+    // 2. Persist to server if DEFAULT_WORKSPACE_ID
+    if (activeWsId === DEFAULT_WORKSPACE_ID) {
+      try {
+        const serverTask = await taskService.updateTask(
+          taskId,
+          data,
+          activeWsId,
+        )
+        const finalTasks = get().tasks.map((t) =>
+          t.id === taskId ? serverTask : t,
+        )
+        const finalMap = {
+          ...get().workspaceTasksMap,
+          [activeWsId]: finalTasks,
+        }
+        set({
+          tasks: finalTasks,
+          workspaceTasksMap: finalMap,
+          isSubmitting: false,
+        })
+        saveTasksMap(finalMap)
+        return serverTask
+      } catch (err) {
+        set({
+          isSubmitting: false,
+          error:
+            err instanceof Error ? err.message : 'Failed to update task on server',
+        })
+        const updatedTask = updatedTasks.find((t) => t.id === taskId)
+        return updatedTask || null
+      }
+    } else {
+      set({ isSubmitting: false })
+      const updatedTask = updatedTasks.find((t) => t.id === taskId)
+      return updatedTask || null
     }
   },
 
@@ -301,13 +442,15 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     const updatedTasks = previousTasks.map((t) =>
       t.id === taskId ? { ...t, status: newStatus } : t,
     )
-    set((state) => ({
+    const updatedMap = {
+      ...get().workspaceTasksMap,
+      [activeWsId]: updatedTasks,
+    }
+    set({
       tasks: updatedTasks,
-      workspaceTasksMap: {
-        ...state.workspaceTasksMap,
-        [activeWsId]: updatedTasks,
-      },
-    }))
+      workspaceTasksMap: updatedMap,
+    })
+    saveTasksMap(updatedMap)
 
     // 2. Persist to Backend API if default workspace
     if (activeWsId === DEFAULT_WORKSPACE_ID) {
@@ -331,14 +474,16 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     const previousTasks = get().tasks
     const activeWsId = get().activeWorkspaceId
     const updatedTasks = previousTasks.filter((t) => t.id !== taskId)
+    const updatedMap = {
+      ...get().workspaceTasksMap,
+      [activeWsId]: updatedTasks,
+    }
 
-    set((state) => ({
+    set({
       tasks: updatedTasks,
-      workspaceTasksMap: {
-        ...state.workspaceTasksMap,
-        [activeWsId]: updatedTasks,
-      },
-    }))
+      workspaceTasksMap: updatedMap,
+    })
+    saveTasksMap(updatedMap)
 
     if (activeWsId === DEFAULT_WORKSPACE_ID) {
       try {

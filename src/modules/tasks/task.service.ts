@@ -1,6 +1,6 @@
 import { Task, TaskStatus } from '@prisma/client';
 import { TaskRepository, taskRepository } from './task.repository.js';
-import { CreateTaskInput, GetTasksQuery } from './task.schema.js';
+import { CreateTaskInput, GetTasksQuery, UpdateTaskInput } from './task.schema.js';
 import { ForbiddenError, NotFoundError, BadRequestError } from '@/shared/errors/index.js';
 
 export interface PaginatedTasksResult {
@@ -53,6 +53,7 @@ export class TaskService {
       status: input.status,
       priority: input.priority,
       assigneeId: input.assigneeId,
+      assigneeName: input.assigneeName,
     });
   }
 
@@ -112,6 +113,29 @@ export class TaskService {
       oldStatus: existingTask.status,
       newStatus,
     });
+  }
+
+  async updateTask(
+    workspaceId: string,
+    taskId: string,
+    userId: string,
+    input: UpdateTaskInput
+  ): Promise<Task> {
+    await this.ensureWorkspaceMember(workspaceId, userId);
+
+    const existingTask = await this.repo.findTaskById(taskId, workspaceId);
+    if (!existingTask) {
+      throw new NotFoundError(`Task with ID ${taskId} not found in this workspace`);
+    }
+
+    if (input.assigneeId) {
+      const isAssigneeMember = await this.repo.isWorkspaceMember(workspaceId, input.assigneeId);
+      if (!isAssigneeMember) {
+        throw new BadRequestError('Assignee must be a member of this workspace');
+      }
+    }
+
+    return this.repo.updateTask(taskId, workspaceId, input);
   }
 
   async deleteTask(workspaceId: string, taskId: string, userId: string): Promise<void> {

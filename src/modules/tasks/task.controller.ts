@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { TaskService, taskService } from './task.service.js';
-import { CreateTaskInput, GetTasksQuery, UpdateTaskStatusInput } from './task.schema.js';
+import { CreateTaskInput, GetTasksQuery, UpdateTaskStatusInput, UpdateTaskInput } from './task.schema.js';
 import { UnauthorizedError } from '@/shared/errors/index.js';
 
 export class TaskController {
@@ -45,6 +45,24 @@ export class TaskController {
         success: true,
         data: result.tasks,
         pagination: result.pagination,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  updateTask = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const userId = this.getAuthenticatedUserId(req);
+      const workspaceId = req.params.workspaceId as string;
+      const taskId = req.params.taskId as string;
+      const body = req.body as UpdateTaskInput;
+
+      const task = await this.service.updateTask(workspaceId, taskId, userId, body);
+
+      res.status(200).json({
+        success: true,
+        data: task,
       });
     } catch (error) {
       next(error);

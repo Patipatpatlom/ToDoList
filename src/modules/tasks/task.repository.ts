@@ -8,6 +8,7 @@ export interface CreateTaskData {
   status: TaskStatus;
   priority: TaskPriority;
   assigneeId?: string;
+  assigneeName?: string;
 }
 
 export interface TaskFilterOptions {
@@ -25,6 +26,51 @@ export interface UpdateStatusWithLogParams {
 }
 
 export class TaskRepository {
+  async getOrCreateAssigneeByName(workspaceId: string, name: string): Promise<string> {
+    const trimmedName = name.trim();
+    let user = await prisma.user.findFirst({
+      where: { name: trimmedName },
+    });
+
+    if (!user) {
+      const slug =
+        trimmedName.toLowerCase().replace(/[^a-z0-9]/g, '') || `user${Date.now()}`;
+      user = await prisma.user.create({
+        data: {
+          email: `${slug}-${Date.now()}@workspace.local`,
+          name: trimmedName,
+          passwordHash: 'seeded-hash',
+        },
+      });
+      await prisma.workspaceMember.create({
+        data: {
+          workspaceId,
+          userId: user.id,
+          role: 'MEMBER',
+        },
+      });
+    } else {
+      const member = await prisma.workspaceMember.findUnique({
+        where: {
+          workspaceId_userId: {
+            workspaceId,
+            userId: user.id,
+          },
+        },
+      });
+      if (!member) {
+        await prisma.workspaceMember.create({
+          data: {
+            workspaceId,
+            userId: user.id,
+            role: 'MEMBER',
+          },
+        });
+      }
+    }
+    return user.id;
+  }
+
   async findWorkspaceById(workspaceId: string): Promise<Workspace | null> {
     return prisma.workspace.findUnique({
       where: { id: workspaceId },
@@ -45,6 +91,11 @@ export class TaskRepository {
   }
 
   async createTask(data: CreateTaskData): Promise<Task> {
+    let finalAssigneeId = data.assigneeId;
+    if (data.assigneeName && data.assigneeName.trim()) {
+      finalAssigneeId = await this.getOrCreateAssigneeByName(data.workspaceId, data.assigneeName);
+    }
+
     return prisma.task.create({
       data: {
         workspaceId: data.workspaceId,
@@ -52,7 +103,7 @@ export class TaskRepository {
         description: data.description,
         status: data.status,
         priority: data.priority,
-        assigneeId: data.assigneeId,
+        assigneeId: finalAssigneeId,
       },
       include: {
         assignee: {
@@ -153,6 +204,52 @@ export class TaskRepository {
       });
 
       return updatedTask;
+    });
+  }
+
+  async updateTask(
+    taskId: string,
+    workspaceId: string,
+    data: {
+      title?: string;
+      description?: string | null;
+      status?: TaskStatus;
+      priority?: TaskPriority;
+      assigneeId?: string | null;
+      assigneeName?: string | null;
+    }
+  ): Promise<Task> {
+    let finalAssigneeId = data.assigneeId;
+
+    if (data.assigneeName !== undefined) {
+      if (!data.assigneeName || !data.assigneeName.trim()) {
+        finalAssigneeId = null;
+      } else {
+        finalAssigneeId = await this.getOrCreateAssigneeByName(workspaceId, data.assigneeName);
+      }
+    }
+
+    return prisma.task.update({
+      where: {
+        id: taskId,
+        workspaceId,
+      },
+      data: {
+        ...(data.title !== undefined ? { title: data.title } : {}),
+        ...(data.description !== undefined ? { description: data.description } : {}),
+        ...(data.status !== undefined ? { status: data.status } : {}),
+        ...(data.priority !== undefined ? { priority: data.priority } : {}),
+        ...(finalAssigneeId !== undefined ? { assigneeId: finalAssigneeId } : {}),
+      },
+      include: {
+        assignee: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
     });
   }
 

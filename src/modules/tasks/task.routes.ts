@@ -6,6 +6,7 @@ import {
   createTaskBodySchema,
   getTasksQuerySchema,
   updateTaskStatusBodySchema,
+  updateTaskBodySchema,
 } from './task.schema.js';
 import { validate } from '@/shared/middlewares/validate.middleware.js';
 
@@ -29,6 +30,16 @@ taskRouter.get(
     query: getTasksQuerySchema,
   }),
   taskController.getTasks
+);
+
+// PATCH /api/v1/workspaces/:workspaceId/tasks/:taskId
+taskRouter.patch(
+  '/workspaces/:workspaceId/tasks/:taskId',
+  validate({
+    params: taskParamsSchema,
+    body: updateTaskBodySchema,
+  }),
+  taskController.updateTask
 );
 
 // PATCH /api/v1/workspaces/:workspaceId/tasks/:taskId/status

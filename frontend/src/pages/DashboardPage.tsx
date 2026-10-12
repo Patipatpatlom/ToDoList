@@ -50,6 +50,7 @@ export const DashboardPage: React.FC = () => {
     setPriorityFilter,
     fetchTasks,
     createTask,
+    updateTask,
     updateTaskStatusOptimistic,
     deleteTask,
   } = useTaskStore()
@@ -99,46 +100,24 @@ export const DashboardPage: React.FC = () => {
   // Handle Create or Edit task submit with custom assignee name
   const handleFormSubmit = async (values: TaskFormValues) => {
     try {
-      const trimmedName = values.assigneeName?.trim()
-      const customAssignee = trimmedName
-        ? {
-            id: `assignee-${Date.now()}`,
-            name: trimmedName,
-            email: '',
-          }
-        : null
+      const trimmedName = values.assigneeName?.trim() || null
 
       if (editingTask) {
-        // Update local task state in this phase
-        const currentTasks = useTaskStore.getState().tasks
-        const updated = currentTasks.map((t) =>
-          t.id === editingTask.id
-            ? {
-                ...t,
-                title: values.title,
-                description: values.description || null,
-                priority: values.priority,
-                assigneeId: customAssignee ? customAssignee.id : null,
-                assignee: customAssignee,
-              }
-            : t,
-        )
-        useTaskStore.getState().setTasks(updated)
+        await updateTask(editingTask.id, {
+          title: values.title,
+          description: values.description || null,
+          priority: values.priority,
+          assigneeName: trimmedName,
+        })
         toast.success(t('common.save'))
         setEditingTask(null)
       } else {
-        const newTask = await createTask({
+        await createTask({
           title: values.title,
           description: values.description,
           priority: values.priority,
+          assigneeName: trimmedName || undefined,
         })
-        if (customAssignee) {
-          const currentTasks = useTaskStore.getState().tasks
-          const updated = currentTasks.map((t) =>
-            t.id === newTask.id ? { ...t, assignee: customAssignee } : t,
-          )
-          useTaskStore.getState().setTasks(updated)
-        }
         toast.success(t('dashboard.toast.createSuccess'))
       }
     } catch {

@@ -30,6 +30,7 @@ export const createTaskBodySchema = z.object({
     .optional()
     .default(TaskPriority.MEDIUM),
   assigneeId: z.string().uuid({ message: 'Invalid assigneeId format (must be UUID)' }).optional(),
+  assigneeName: z.string().trim().max(100).optional(),
 });
 
 export const getTasksQuerySchema = z.object({
@@ -54,6 +55,29 @@ export const updateTaskStatusBodySchema = z.object({
   }),
 });
 
+export const updateTaskBodySchema = z.object({
+  title: z
+    .string()
+    .trim()
+    .min(1, 'Title cannot be empty')
+    .max(200, 'Title cannot exceed 200 characters')
+    .optional(),
+  description: z.string().trim().max(2000).nullable().optional(),
+  status: z
+    .nativeEnum(TaskStatus, {
+      message: 'Status must be TODO, IN_PROGRESS, or DONE',
+    })
+    .optional(),
+  priority: z
+    .nativeEnum(TaskPriority, {
+      message: 'Priority must be LOW, MEDIUM, or HIGH',
+    })
+    .optional(),
+  assigneeName: z.string().trim().max(100).nullable().optional(),
+  assigneeId: z.string().uuid({ message: 'Invalid assigneeId format' }).nullable().optional(),
+});
+
 export type CreateTaskInput = z.infer<typeof createTaskBodySchema>;
 export type GetTasksQuery = z.infer<typeof getTasksQuerySchema>;
 export type UpdateTaskStatusInput = z.infer<typeof updateTaskStatusBodySchema>;
+export type UpdateTaskInput = z.infer<typeof updateTaskBodySchema>;

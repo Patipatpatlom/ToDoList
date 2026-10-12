@@ -24,6 +24,7 @@ export interface CreateTaskDTO {
   description?: string
   priority?: 'LOW' | 'MEDIUM' | 'HIGH'
   assigneeId?: string
+  assigneeName?: string
 }
 
 export const DEFAULT_WORKSPACE_ID = 'f52aa0b7-dcf1-4135-bc24-3c339e7044d0'
@@ -34,7 +35,7 @@ export const taskService = {
    */
   async getTasks(workspaceId: string = DEFAULT_WORKSPACE_ID): Promise<Task[]> {
     const response = await apiClient.get<{ success: boolean; data: Task[] }>(
-      `/workspaces/${workspaceId}/tasks`,
+      `/workspaces/${workspaceId}/tasks?limit=100`,
     )
     return response.data.data
   },
@@ -48,6 +49,26 @@ export const taskService = {
   ): Promise<Task> {
     const response = await apiClient.post<{ success: boolean; data: Task }>(
       `/workspaces/${workspaceId}/tasks`,
+      data,
+    )
+    return response.data.data
+  },
+
+  /**
+   * Update full details of a task (title, description, priority, assigneeName)
+   */
+  async updateTask(
+    taskId: string,
+    data: {
+      title?: string
+      description?: string | null
+      priority?: 'LOW' | 'MEDIUM' | 'HIGH'
+      assigneeName?: string | null
+    },
+    workspaceId: string = DEFAULT_WORKSPACE_ID,
+  ): Promise<Task> {
+    const response = await apiClient.patch<{ success: boolean; data: Task }>(
+      `/workspaces/${workspaceId}/tasks/${taskId}`,
       data,
     )
     return response.data.data
