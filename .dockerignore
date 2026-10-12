@@ -16,6 +16,9 @@ build/
 
 # Tests & Coverage
 tests/
+**/__tests__/
+*.test.ts
+*.spec.ts
 coverage/
 
 # Documentation & logs
