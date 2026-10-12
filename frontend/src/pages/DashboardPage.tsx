@@ -18,6 +18,7 @@ import {
   User,
   Layers,
   Loader2,
+  FolderKanban,
   GripVertical,
   Trash2,
 } from 'lucide-react'
@@ -40,6 +41,7 @@ export const DashboardPage: React.FC = () => {
     | null
   const {
     tasks,
+    activeWorkspace,
     isLoading,
     isSubmitting,
     searchQuery,
@@ -278,8 +280,18 @@ export const DashboardPage: React.FC = () => {
             <h1 className="text-2xl font-bold tracking-tight text-slate-900">
               {t('dashboard.title')}
             </h1>
+            <span
+              className={cn(
+                'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold shadow-2xs transition-all',
+                activeWorkspace.bgColor,
+                activeWorkspace.textColor,
+              )}
+            >
+              <FolderKanban className="w-3.5 h-3.5" />
+              {activeWorkspace.name}
+            </span>
             {isLoading && (
-              <Loader2 className="w-4 h-4 text-brand-500 animate-spin ml-2" />
+              <Loader2 className="w-4 h-4 text-brand-500 animate-spin ml-1" />
             )}
           </div>
           <p className="text-sm text-slate-500 mt-1">

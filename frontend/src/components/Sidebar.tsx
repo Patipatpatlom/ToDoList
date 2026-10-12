@@ -14,48 +14,20 @@ import {
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { cn } from '../utils/cn'
-import { useTaskStore } from '../store/taskStore'
-
-interface WorkspaceItem {
-  id: string
-  name: string
-  subtitle: string
-  bgColor: string
-  textColor: string
-}
+import { useTaskStore, type WorkspaceItem } from '../store/taskStore'
 
 export const Sidebar: React.FC = () => {
   const { t } = useTranslation()
   const [searchParams] = useSearchParams()
-  const { tasks } = useTaskStore()
+  const {
+    tasks,
+    workspaces,
+    activeWorkspace,
+    switchWorkspace,
+    addWorkspace,
+  } = useTaskStore()
   const dropdownRef = useRef<HTMLDivElement>(null)
 
-  // Workspaces list
-  const [workspaces, setWorkspaces] = useState<WorkspaceItem[]>([
-    {
-      id: 'f52aa0b7-dcf1-4135-bc24-3c339e7044d0',
-      name: 'Product Engineering',
-      subtitle: 'Pro · 2 Members',
-      bgColor: 'bg-brand-50',
-      textColor: 'text-brand-600',
-    },
-    {
-      id: 'ws-marketing',
-      name: 'Marketing & Brand',
-      subtitle: 'Free · 3 Members',
-      bgColor: 'bg-purple-50',
-      textColor: 'text-purple-600',
-    },
-    {
-      id: 'ws-personal',
-      name: 'Personal Space',
-      subtitle: 'Personal · 1 Member',
-      bgColor: 'bg-emerald-50',
-      textColor: 'text-emerald-600',
-    },
-  ])
-
-  const [activeWorkspace, setActiveWorkspace] = useState<WorkspaceItem>(workspaces[0])
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
   const [newWorkspaceName, setNewWorkspaceName] = useState('')
@@ -124,10 +96,10 @@ export const Sidebar: React.FC = () => {
     },
   ]
 
-  const handleSelectWorkspace = (ws: WorkspaceItem) => {
-    setActiveWorkspace(ws)
+  const handleSelectWorkspace = async (ws: WorkspaceItem) => {
     setIsDropdownOpen(false)
     setIsCreating(false)
+    await switchWorkspace(ws)
     toast.success(`${t('sidebar.workspaceSwitched')} ${ws.name}`)
   }
 
@@ -143,8 +115,7 @@ export const Sidebar: React.FC = () => {
       textColor: 'text-amber-600',
     }
 
-    setWorkspaces((prev) => [...prev, newWs])
-    setActiveWorkspace(newWs)
+    addWorkspace(newWs)
     setNewWorkspaceName('')
     setIsCreating(false)
     setIsDropdownOpen(false)
