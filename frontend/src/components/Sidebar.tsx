@@ -10,11 +10,14 @@ import {
   Check,
   Plus,
   X,
+  Trash2,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { cn } from '../utils/cn'
 import { useTaskStore, type WorkspaceItem } from '../store/taskStore'
+import { ConfirmModal } from './ConfirmModal'
+import { DEFAULT_WORKSPACE_ID } from '../services/taskService'
 
 export const Sidebar: React.FC = () => {
   const { t } = useTranslation()
@@ -25,12 +28,15 @@ export const Sidebar: React.FC = () => {
     activeWorkspace,
     switchWorkspace,
     addWorkspace,
+    deleteWorkspace,
   } = useTaskStore()
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
   const [newWorkspaceName, setNewWorkspaceName] = useState('')
+  const [workspaceToDelete, setWorkspaceToDelete] = useState<WorkspaceItem | null>(null)
+  const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false)
 
   // Close dropdown on click outside or Escape
   useEffect(() => {
@@ -101,6 +107,15 @@ export const Sidebar: React.FC = () => {
     setIsCreating(false)
     await switchWorkspace(ws)
     toast.success(`${t('sidebar.workspaceSwitched')} ${ws.name}`)
+  }
+
+  const handleConfirmDeleteWorkspace = () => {
+    if (!workspaceToDelete) return
+    const name = workspaceToDelete.name
+    deleteWorkspace(workspaceToDelete.id)
+    setIsConfirmDeleteOpen(false)
+    setWorkspaceToDelete(null)
+    toast.success(`${t('sidebar.workspaceDeleted')}: ${name}`)
   }
 
   const handleCreateWorkspaceSubmit = (e: React.FormEvent) => {
@@ -178,18 +193,20 @@ export const Sidebar: React.FC = () => {
               {workspaces.map((ws) => {
                 const isSelected = ws.id === activeWorkspace.id
                 return (
-                  <button
+                  <div
                     key={ws.id}
-                    type="button"
-                    onClick={() => handleSelectWorkspace(ws)}
                     className={cn(
-                      'w-full flex items-center justify-between p-2 rounded-xl text-left text-xs transition-colors cursor-pointer group',
+                      'w-full flex items-center justify-between p-1 rounded-xl text-xs transition-colors group/ws',
                       isSelected
                         ? 'bg-brand-50/80 text-brand-900 font-semibold'
                         : 'hover:bg-slate-50 text-slate-700',
                     )}
                   >
-                    <div className="flex items-center gap-2.5 min-w-0">
+                    <button
+                      type="button"
+                      onClick={() => handleSelectWorkspace(ws)}
+                      className="flex items-center gap-2.5 min-w-0 flex-1 text-left cursor-pointer p-1 rounded-lg"
+                    >
                       <div
                         className={cn(
                           'p-1.5 rounded-lg shrink-0',
@@ -199,17 +216,34 @@ export const Sidebar: React.FC = () => {
                       >
                         <FolderKanban className="w-3.5 h-3.5" />
                       </div>
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <div className="truncate font-medium">{ws.name}</div>
                         <div className="text-[10px] text-slate-400 truncate">
                           {ws.subtitle}
                         </div>
                       </div>
+                    </button>
+                    <div className="flex items-center gap-1 shrink-0 px-1">
+                      {isSelected && (
+                        <Check className="w-4 h-4 text-brand-600 shrink-0" />
+                      )}
+                      {ws.id !== DEFAULT_WORKSPACE_ID && workspaces.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setWorkspaceToDelete(ws)
+                            setIsConfirmDeleteOpen(true)
+                            setIsDropdownOpen(false)
+                          }}
+                          title={t('sidebar.deleteWorkspace')}
+                          className="opacity-0 group-hover/ws:opacity-100 p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-all cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                     </div>
-                    {isSelected && (
-                      <Check className="w-4 h-4 text-brand-600 shrink-0" />
-                    )}
-                  </button>
+                  </div>
                 )
               })}
             </div>
@@ -302,6 +336,21 @@ export const Sidebar: React.FC = () => {
           )
         })}
       </nav>
+
+      {/* Confirm Delete Workspace Modal */}
+      <ConfirmModal
+        isOpen={isConfirmDeleteOpen}
+        onClose={() => {
+          setIsConfirmDeleteOpen(false)
+          setWorkspaceToDelete(null)
+        }}
+        onConfirm={handleConfirmDeleteWorkspace}
+        title={t('sidebar.confirmDeleteWorkspaceTitle')}
+        message={t('sidebar.confirmDeleteWorkspaceMessage')}
+        itemName={workspaceToDelete?.name}
+        confirmText={t('common.delete')}
+        cancelText={t('common.cancel')}
+      />
     </aside>
   )
 }

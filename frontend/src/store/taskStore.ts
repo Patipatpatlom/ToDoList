@@ -175,6 +175,7 @@ interface TaskState {
   fetchTasks: (workspaceId?: string) => Promise<void>
   switchWorkspace: (workspace: WorkspaceItem) => Promise<void>
   addWorkspace: (workspace: WorkspaceItem) => void
+  deleteWorkspace: (workspaceId: string) => void
   createTask: (data: CreateTaskDTO) => Promise<Task>
   updateTask: (
     taskId: string,
@@ -273,6 +274,44 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     })
     saveWorkspaces(updatedWorkspaces)
     saveTasksMap(updatedMap)
+  },
+
+  deleteWorkspace: (workspaceId: string) => {
+    const currentWorkspaces = get().workspaces
+    const remainingWorkspaces = currentWorkspaces.filter(
+      (w) => w.id !== workspaceId,
+    )
+    const updatedMap = { ...get().workspaceTasksMap }
+    delete updatedMap[workspaceId]
+
+    let newActive = get().activeWorkspace
+    let newActiveId = get().activeWorkspaceId
+
+    if (newActiveId === workspaceId) {
+      newActive =
+        remainingWorkspaces.find((w) => w.id === DEFAULT_WORKSPACE_ID) ||
+        remainingWorkspaces[0] ||
+        DEFAULT_WORKSPACES[0]
+      newActiveId = newActive.id
+      saveActiveWorkspaceId(newActiveId)
+    }
+
+    const newTasks = updatedMap[newActiveId] || []
+
+    set({
+      workspaces: remainingWorkspaces,
+      workspaceTasksMap: updatedMap,
+      activeWorkspace: newActive,
+      activeWorkspaceId: newActiveId,
+      tasks: newTasks,
+    })
+
+    saveWorkspaces(remainingWorkspaces)
+    saveTasksMap(updatedMap)
+
+    if (newActiveId === DEFAULT_WORKSPACE_ID) {
+      void get().fetchTasks(DEFAULT_WORKSPACE_ID)
+    }
   },
 
   fetchTasks: async (workspaceId = get().activeWorkspaceId) => {
