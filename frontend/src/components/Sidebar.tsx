@@ -17,7 +17,6 @@ import { toast } from 'sonner'
 import { cn } from '../utils/cn'
 import { useTaskStore, type WorkspaceItem } from '../store/taskStore'
 import { ConfirmModal } from './ConfirmModal'
-import { DEFAULT_WORKSPACE_ID } from '../services/taskService'
 
 export const Sidebar: React.FC = () => {
   const { t } = useTranslation()
@@ -157,18 +156,18 @@ export const Sidebar: React.FC = () => {
               <div
                 className={cn(
                   'p-2 rounded-xl group-hover:scale-105 transition-transform shrink-0',
-                  activeWorkspace.bgColor,
-                  activeWorkspace.textColor,
+                  activeWorkspace?.bgColor || 'bg-slate-100',
+                  activeWorkspace?.textColor || 'text-slate-600',
                 )}
               >
                 <FolderKanban className="w-4 h-4" />
               </div>
               <div className="min-w-0">
                 <div className="text-xs font-bold text-slate-800 truncate group-hover:text-brand-600 transition-colors">
-                  {activeWorkspace.name}
+                  {activeWorkspace?.name || t('sidebar.noWorkspace')}
                 </div>
                 <div className="text-[11px] text-slate-400 truncate">
-                  {activeWorkspace.subtitle}
+                  {activeWorkspace?.subtitle || t('sidebar.clickToCreate')}
                 </div>
               </div>
             </div>
@@ -189,45 +188,45 @@ export const Sidebar: React.FC = () => {
             </div>
 
             {/* List of available workspaces */}
-            <div className="space-y-1 max-h-56 overflow-y-auto py-1">
-              {workspaces.map((ws) => {
-                const isSelected = ws.id === activeWorkspace.id
-                return (
-                  <div
-                    key={ws.id}
-                    className={cn(
-                      'w-full flex items-center justify-between p-1 rounded-xl text-xs transition-colors group/ws',
-                      isSelected
-                        ? 'bg-brand-50/80 text-brand-900 font-semibold'
-                        : 'hover:bg-slate-50 text-slate-700',
-                    )}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => handleSelectWorkspace(ws)}
-                      className="flex items-center gap-2.5 min-w-0 flex-1 text-left cursor-pointer p-1 rounded-lg"
-                    >
-                      <div
-                        className={cn(
-                          'p-1.5 rounded-lg shrink-0',
-                          ws.bgColor,
-                          ws.textColor,
-                        )}
-                      >
-                        <FolderKanban className="w-3.5 h-3.5" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="truncate font-medium">{ws.name}</div>
-                        <div className="text-[10px] text-slate-400 truncate">
-                          {ws.subtitle}
-                        </div>
-                      </div>
-                    </button>
-                    <div className="flex items-center gap-1 shrink-0 px-1">
-                      {isSelected && (
-                        <Check className="w-4 h-4 text-brand-600 shrink-0" />
+            {workspaces.length > 0 ? (
+              <div className="space-y-1 max-h-56 overflow-y-auto py-1">
+                {workspaces.map((ws) => {
+                  const isSelected = ws.id === activeWorkspace?.id
+                  return (
+                    <div
+                      key={ws.id}
+                      className={cn(
+                        'w-full flex items-center justify-between p-1 rounded-xl text-xs transition-colors group/ws',
+                        isSelected
+                          ? 'bg-brand-50/80 text-brand-900 font-semibold'
+                          : 'hover:bg-slate-50 text-slate-700',
                       )}
-                      {ws.id !== DEFAULT_WORKSPACE_ID && workspaces.length > 1 && (
+                    >
+                      <button
+                        type="button"
+                        onClick={() => handleSelectWorkspace(ws)}
+                        className="flex items-center gap-2.5 min-w-0 flex-1 text-left cursor-pointer p-1 rounded-lg"
+                      >
+                        <div
+                          className={cn(
+                            'p-1.5 rounded-lg shrink-0',
+                            ws.bgColor,
+                            ws.textColor,
+                          )}
+                        >
+                          <FolderKanban className="w-3.5 h-3.5" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate font-medium">{ws.name}</div>
+                          <div className="text-[10px] text-slate-400 truncate">
+                            {ws.subtitle}
+                          </div>
+                        </div>
+                      </button>
+                      <div className="flex items-center gap-1 shrink-0 px-1">
+                        {isSelected && (
+                          <Check className="w-4 h-4 text-brand-600 shrink-0" />
+                        )}
                         <button
                           type="button"
                           onClick={(e) => {
@@ -241,12 +240,16 @@ export const Sidebar: React.FC = () => {
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
-                      )}
+                      </div>
                     </div>
-                  </div>
-                )
-              })}
-            </div>
+                  )
+                })}
+              </div>
+            ) : (
+              <div className="px-3 py-4 text-center text-xs text-slate-400">
+                {t('sidebar.noWorkspacesYet')}
+              </div>
+            )}
 
             <div className="h-px bg-slate-100 my-1.5" />
 

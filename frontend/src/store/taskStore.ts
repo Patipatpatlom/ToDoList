@@ -14,94 +14,12 @@ export interface WorkspaceItem {
   textColor: string
 }
 
-export const DEFAULT_WORKSPACES: WorkspaceItem[] = [
-  {
-    id: DEFAULT_WORKSPACE_ID,
-    name: 'Product Engineering',
-    subtitle: 'Pro · 2 Members',
-    bgColor: 'bg-brand-50',
-    textColor: 'text-brand-600',
-  },
-  {
-    id: 'ws-marketing',
-    name: 'Marketing & Brand',
-    subtitle: 'Free · 3 Members',
-    bgColor: 'bg-purple-50',
-    textColor: 'text-purple-600',
-  },
-  {
-    id: 'ws-personal',
-    name: 'Personal Space',
-    subtitle: 'Personal · 1 Member',
-    bgColor: 'bg-emerald-50',
-    textColor: 'text-emerald-600',
-  },
-]
-
-const INITIAL_MARKETING_TASKS: Task[] = [
-  {
-    id: 'mkt-1',
-    workspaceId: 'ws-marketing',
-    title: 'Launch Product Campaign Q4',
-    description: 'Coordinate multi-channel marketing campaigns across social media and newsletter.',
-    status: 'IN_PROGRESS',
-    priority: 'HIGH',
-    assignee: { id: 'usr-sarah', name: 'Sarah Connor', email: 'sarah@example.com' },
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: 'mkt-2',
-    workspaceId: 'ws-marketing',
-    title: 'Design Brand Assets & Social Banners',
-    description: 'Create high-resolution banners and illustrations for release announcement.',
-    status: 'TODO',
-    priority: 'MEDIUM',
-    assignee: { id: 'usr-alex', name: 'Alex Designer', email: 'alex@example.com' },
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: 'mkt-3',
-    workspaceId: 'ws-marketing',
-    title: 'Publish TaskFlow 2.0 Press Release',
-    description: 'Distribute technical press release to developer media outlets.',
-    status: 'DONE',
-    priority: 'LOW',
-    assignee: { id: 'usr-mark', name: 'Mark Content', email: 'mark@example.com' },
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-]
-
-const INITIAL_PERSONAL_TASKS: Task[] = [
-  {
-    id: 'per-1',
-    workspaceId: 'ws-personal',
-    title: 'Plan Weekly Sprint Goals',
-    description: 'Review prioritized backlog and plan milestones for this week.',
-    status: 'TODO',
-    priority: 'MEDIUM',
-    assignee: { id: 'usr-me', name: 'Me', email: 'me@example.com' },
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: 'per-2',
-    workspaceId: 'ws-personal',
-    title: 'Prepare presentation for team sync',
-    description: 'Summarize key deliverables achieved in Phase 2.',
-    status: 'IN_PROGRESS',
-    priority: 'HIGH',
-    assignee: { id: 'usr-me', name: 'Me', email: 'me@example.com' },
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-]
+export const DEFAULT_WORKSPACES: WorkspaceItem[] = []
 
 const TASKS_STORAGE_KEY = 'taskflow_workspace_tasks'
 const WORKSPACES_STORAGE_KEY = 'taskflow_workspaces'
 const ACTIVE_WORKSPACE_KEY = 'taskflow_active_workspace_id'
+const WORKSPACE_RESET_FLAG_KEY = 'taskflow_workspaces_reset_v3'
 
 function loadSavedTasksMap(): Record<string, Task[]> | null {
   try {
@@ -159,11 +77,11 @@ interface TaskState {
   tasks: Task[]
   workspaceTasksMap: Record<string, Task[]>
   workspaces: WorkspaceItem[]
-  activeWorkspace: WorkspaceItem
+  activeWorkspace: WorkspaceItem | null
   isLoading: boolean
   isSubmitting: boolean
   error: string | null
-  activeWorkspaceId: string
+  activeWorkspaceId: string | null
 
   // Search & Filter State
   searchQuery: string
@@ -176,6 +94,7 @@ interface TaskState {
   switchWorkspace: (workspace: WorkspaceItem) => Promise<void>
   addWorkspace: (workspace: WorkspaceItem) => void
   deleteWorkspace: (workspaceId: string) => void
+  clearAllWorkspaces: () => void
   createTask: (data: CreateTaskDTO) => Promise<Task>
   updateTask: (
     taskId: string,
@@ -194,30 +113,59 @@ interface TaskState {
   setTasks: (tasks: Task[]) => void
 }
 
-const initialSavedWorkspaces = loadSavedWorkspaces() || DEFAULT_WORKSPACES
-const initialSavedMap = loadSavedTasksMap() || {
-  [DEFAULT_WORKSPACE_ID]: [],
-  'ws-marketing': INITIAL_MARKETING_TASKS,
-  'ws-personal': INITIAL_PERSONAL_TASKS,
+function initWorkspacesState(): {
+  workspaces: WorkspaceItem[]
+  activeWorkspace: WorkspaceItem | null
+  activeWorkspaceId: string | null
+  tasksMap: Record<string, Task[]>
+} {
+  try {
+    if (!localStorage.getItem(WORKSPACE_RESET_FLAG_KEY)) {
+      localStorage.setItem(WORKSPACE_RESET_FLAG_KEY, 'true')
+      localStorage.removeItem(WORKSPACES_STORAGE_KEY)
+      localStorage.removeItem(ACTIVE_WORKSPACE_KEY)
+      localStorage.removeItem(TASKS_STORAGE_KEY)
+      return {
+        workspaces: [],
+        activeWorkspace: null,
+        activeWorkspaceId: null,
+        tasksMap: {},
+      }
+    }
+  } catch {
+    // ignore
+  }
+
+  const savedWorkspaces = loadSavedWorkspaces() || []
+  const savedTasksMap = loadSavedTasksMap() || {}
+  const savedActiveId = loadSavedActiveWorkspaceId()
+  const activeWs =
+    (savedActiveId && savedWorkspaces.find((w) => w.id === savedActiveId)) ||
+    savedWorkspaces[0] ||
+    null
+
+  return {
+    workspaces: savedWorkspaces,
+    activeWorkspace: activeWs,
+    activeWorkspaceId: activeWs ? activeWs.id : null,
+    tasksMap: savedTasksMap,
+  }
 }
 
-const savedActiveWorkspaceId = loadSavedActiveWorkspaceId()
-const initialActiveWorkspace =
-  (savedActiveWorkspaceId &&
-    initialSavedWorkspaces.find((w) => w.id === savedActiveWorkspaceId)) ||
-  initialSavedWorkspaces[0] ||
-  DEFAULT_WORKSPACES[0]
-const initialActiveWorkspaceId = initialActiveWorkspace.id
+const initialData = initWorkspacesState()
 
 export const useTaskStore = create<TaskState>((set, get) => ({
-  tasks: initialSavedMap[initialActiveWorkspaceId] || [],
-  workspaceTasksMap: initialSavedMap,
-  workspaces: initialSavedWorkspaces,
-  activeWorkspace: initialActiveWorkspace,
+  tasks:
+    (initialData.activeWorkspaceId &&
+      initialData.tasksMap[initialData.activeWorkspaceId]) ||
+    [],
+  workspaceTasksMap: initialData.tasksMap,
+  workspaces: initialData.workspaces,
+  activeWorkspace: initialData.activeWorkspace,
   isLoading: false,
   isSubmitting: false,
   error: null,
-  activeWorkspaceId: initialActiveWorkspaceId,
+  activeWorkspaceId: initialData.activeWorkspaceId,
 
   searchQuery: '',
   priorityFilter: 'ALL',
@@ -227,6 +175,10 @@ export const useTaskStore = create<TaskState>((set, get) => ({
 
   setTasks: (tasks: Task[]) => {
     const wsId = get().activeWorkspaceId
+    if (!wsId) {
+      set({ tasks })
+      return
+    }
     const newMap = {
       ...get().workspaceTasksMap,
       [wsId]: tasks,
@@ -284,19 +236,30 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     const updatedMap = { ...get().workspaceTasksMap }
     delete updatedMap[workspaceId]
 
-    let newActive = get().activeWorkspace
-    let newActiveId = get().activeWorkspaceId
+    let newActive: WorkspaceItem | null = null
+    let newActiveId: string | null = null
 
-    if (newActiveId === workspaceId) {
-      newActive =
-        remainingWorkspaces.find((w) => w.id === DEFAULT_WORKSPACE_ID) ||
-        remainingWorkspaces[0] ||
-        DEFAULT_WORKSPACES[0]
-      newActiveId = newActive.id
-      saveActiveWorkspaceId(newActiveId)
+    if (remainingWorkspaces.length > 0) {
+      if (get().activeWorkspaceId === workspaceId) {
+        newActive = remainingWorkspaces[0]
+        newActiveId = newActive.id
+      } else {
+        newActive = get().activeWorkspace
+        newActiveId = get().activeWorkspaceId
+      }
     }
 
-    const newTasks = updatedMap[newActiveId] || []
+    if (newActiveId) {
+      saveActiveWorkspaceId(newActiveId)
+    } else {
+      try {
+        localStorage.removeItem(ACTIVE_WORKSPACE_KEY)
+      } catch {
+        // ignore
+      }
+    }
+
+    const newTasks = (newActiveId && updatedMap[newActiveId]) || []
 
     set({
       workspaces: remainingWorkspaces,
@@ -314,7 +277,28 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     }
   },
 
-  fetchTasks: async (workspaceId = get().activeWorkspaceId) => {
+  clearAllWorkspaces: () => {
+    set({
+      workspaces: [],
+      workspaceTasksMap: {},
+      activeWorkspace: null,
+      activeWorkspaceId: null,
+      tasks: [],
+    })
+    saveWorkspaces([])
+    saveTasksMap({})
+    try {
+      localStorage.removeItem(ACTIVE_WORKSPACE_KEY)
+    } catch {
+      // ignore
+    }
+  },
+
+  fetchTasks: async (workspaceId = get().activeWorkspaceId ?? undefined) => {
+    if (!workspaceId) {
+      set({ tasks: [], isLoading: false })
+      return
+    }
     set({ isLoading: true, error: null })
     try {
       if (workspaceId === DEFAULT_WORKSPACE_ID) {
@@ -347,6 +331,10 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   createTask: async (data: CreateTaskDTO) => {
     set({ isSubmitting: true, error: null })
     const activeWsId = get().activeWorkspaceId
+    if (!activeWsId) {
+      set({ isSubmitting: false, error: 'No active workspace' })
+      throw new Error('No active workspace')
+    }
     const trimmedName = data.assigneeName?.trim()
 
     try {
@@ -426,6 +414,10 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   updateTask: async (taskId, data) => {
     set({ isSubmitting: true, error: null })
     const activeWsId = get().activeWorkspaceId
+    if (!activeWsId) {
+      set({ isSubmitting: false })
+      return null
+    }
     const previousTasks = get().tasks
 
     // 1. Optimistic update
@@ -501,6 +493,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   updateTaskStatusOptimistic: async (taskId, newStatus) => {
     const previousTasks = get().tasks
     const activeWsId = get().activeWorkspaceId
+    if (!activeWsId) return
     const targetTask = previousTasks.find((t) => t.id === taskId)
     if (!targetTask || targetTask.status === newStatus) return
 
@@ -539,6 +532,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   deleteTask: async (taskId) => {
     const previousTasks = get().tasks
     const activeWsId = get().activeWorkspaceId
+    if (!activeWsId) return
     const updatedTasks = previousTasks.filter((t) => t.id !== taskId)
     const updatedMap = {
       ...get().workspaceTasksMap,

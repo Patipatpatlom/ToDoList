@@ -259,16 +259,23 @@ export const DashboardPage: React.FC = () => {
             <h1 className="text-2xl font-bold tracking-tight text-slate-900">
               {t('dashboard.title')}
             </h1>
-            <span
-              className={cn(
-                'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold shadow-2xs transition-all',
-                activeWorkspace.bgColor,
-                activeWorkspace.textColor,
-              )}
-            >
-              <FolderKanban className="w-3.5 h-3.5" />
-              {activeWorkspace.name}
-            </span>
+            {activeWorkspace ? (
+              <span
+                className={cn(
+                  'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold shadow-2xs transition-all',
+                  activeWorkspace.bgColor,
+                  activeWorkspace.textColor,
+                )}
+              >
+                <FolderKanban className="w-3.5 h-3.5" />
+                {activeWorkspace.name}
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-500 shadow-2xs">
+                <FolderKanban className="w-3.5 h-3.5" />
+                {t('dashboard.noActiveWorkspace')}
+              </span>
+            )}
             {isLoading && (
               <Loader2 className="w-4 h-4 text-brand-500 animate-spin ml-1" />
             )}
@@ -279,15 +286,17 @@ export const DashboardPage: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          <Button
-            id="create-task-btn"
-            variant="primary"
-            onClick={handleOpenCreateModal}
-            leftIcon={<Plus className="w-4 h-4" />}
-            className="rounded-lg shadow-xs hover:shadow-md transition-all duration-200"
-          >
-            {t('dashboard.createTask')}
-          </Button>
+          {activeWorkspace && (
+            <Button
+              id="create-task-btn"
+              variant="primary"
+              onClick={handleOpenCreateModal}
+              leftIcon={<Plus className="w-4 h-4" />}
+              className="rounded-lg shadow-xs hover:shadow-md transition-all duration-200"
+            >
+              {t('dashboard.createTask')}
+            </Button>
+          )}
         </div>
       </div>
 
@@ -392,8 +401,20 @@ export const DashboardPage: React.FC = () => {
         </div>
       )}
 
-      {/* Drag & Drop Kanban Columns */}
-      <DragDropContext onDragEnd={handleDragEnd}>
+      {!activeWorkspace ? (
+        <div className="bg-white rounded-3xl border border-dashed border-slate-200 shadow-xs p-16 text-center flex flex-col items-center justify-center my-8">
+          <div className="w-16 h-16 rounded-2xl bg-brand-50 text-brand-600 flex items-center justify-center mb-4 shadow-xs">
+            <FolderKanban className="w-8 h-8" />
+          </div>
+          <h3 className="text-lg font-bold text-slate-800 mb-2">
+            {t('dashboard.emptyWorkspaceTitle')}
+          </h3>
+          <p className="text-sm text-slate-500 max-w-md">
+            {t('dashboard.emptyWorkspaceDesc')}
+          </p>
+        </div>
+      ) : (
+        <DragDropContext onDragEnd={handleDragEnd}>
         <div
           className={cn(
             'grid gap-6 items-start',
@@ -520,6 +541,7 @@ export const DashboardPage: React.FC = () => {
           })}
         </div>
       </DragDropContext>
+      )}
 
       {/* Task Creation & Edit Modal */}
       <TaskModal
