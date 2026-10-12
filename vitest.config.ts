@@ -6,6 +6,11 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     testTimeout: 15000,
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json', 'html'],
+      exclude: ['node_modules', 'dist', 'prisma', '**/*.test.ts', '**/*.d.ts'],
+    },
   },
   resolve: {
     alias: {

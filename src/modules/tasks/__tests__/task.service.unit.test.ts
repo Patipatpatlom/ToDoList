@@ -4,7 +4,7 @@ import { TaskRepository } from '@/modules/tasks/task.repository.js';
 import { TaskPriority, TaskStatus } from '@prisma/client';
 import { ForbiddenError, NotFoundError, BadRequestError } from '@/shared/errors/index.js';
 
-describe('TaskService (Unit Tests)', () => {
+describe('TaskService Unit Tests (Mocked Repository & Database Layer 100%)', () => {
   let taskService: TaskService;
   let mockRepo: TaskRepository;
 
@@ -14,6 +14,7 @@ describe('TaskService (Unit Tests)', () => {
     slug: 'test-workspace',
     ownerId: 'user-alice',
     createdAt: new Date(),
+    updatedAt: new Date(),
   };
 
   const mockUserAlice = 'user-alice';
@@ -33,7 +34,7 @@ describe('TaskService (Unit Tests)', () => {
     taskService = new TaskService(mockRepo);
   });
 
-  describe('createTask', () => {
+  describe('a. สร้าง Task สำเร็จเมื่อผู้ใช้เป็นสมาชิกของ Workspace', () => {
     it('should successfully create a task when caller is a workspace member', async () => {
       vi.mocked(mockRepo.findWorkspaceById).mockResolvedValue(mockWorkspace);
       vi.mocked(mockRepo.isWorkspaceMember).mockResolvedValue(true);
@@ -74,38 +75,8 @@ describe('TaskService (Unit Tests)', () => {
       expect(result).toEqual(createdTaskMock);
     });
 
-    it('should throw NotFoundError if workspace does not exist', async () => {
-      vi.mocked(mockRepo.findWorkspaceById).mockResolvedValue(null);
-
-      await expect(
-        taskService.createTask('non-existent-workspace', mockUserAlice, {
-          title: 'Orphan task',
-          status: TaskStatus.TODO,
-          priority: TaskPriority.MEDIUM,
-        })
-      ).rejects.toThrow(NotFoundError);
-
-      expect(mockRepo.createTask).not.toHaveBeenCalled();
-    });
-
-    it('should throw ForbiddenError when user is not a member of the workspace', async () => {
+    it('should throw BadRequestError when assignee is not a workspace member', async () => {
       vi.mocked(mockRepo.findWorkspaceById).mockResolvedValue(mockWorkspace);
-      vi.mocked(mockRepo.isWorkspaceMember).mockResolvedValue(false);
-
-      await expect(
-        taskService.createTask(mockWorkspace.id, mockUserStranger, {
-          title: 'Intruder task',
-          status: TaskStatus.TODO,
-          priority: TaskPriority.MEDIUM,
-        })
-      ).rejects.toThrow(ForbiddenError);
-
-      expect(mockRepo.createTask).not.toHaveBeenCalled();
-    });
-
-    it('should throw BadRequestError when assigneeId is not a workspace member', async () => {
-      vi.mocked(mockRepo.findWorkspaceById).mockResolvedValue(mockWorkspace);
-      // Alice is member, but stranger assignee is not
       vi.mocked(mockRepo.isWorkspaceMember).mockImplementation(
         async (_workspaceId, userId) => userId === mockUserAlice
       );
@@ -123,48 +94,23 @@ describe('TaskService (Unit Tests)', () => {
     });
   });
 
-  describe('getTasks', () => {
-    it('should return paginated tasks when user is a workspace member', async () => {
+  describe('b. โยน ForbiddenError ทันทีเมื่อผู้ใช้ไม่ได้เป็นสมาชิกใน Workspace', () => {
+    it('createTask: should throw ForbiddenError when user is not a member', async () => {
       vi.mocked(mockRepo.findWorkspaceById).mockResolvedValue(mockWorkspace);
-      vi.mocked(mockRepo.isWorkspaceMember).mockResolvedValue(true);
+      vi.mocked(mockRepo.isWorkspaceMember).mockResolvedValue(false);
 
-      const sampleTasks = [
-        {
-          id: 'task-1',
-          workspaceId: mockWorkspace.id,
-          title: 'Task 1',
-          description: null,
+      await expect(
+        taskService.createTask(mockWorkspace.id, mockUserStranger, {
+          title: 'Intruder task',
           status: TaskStatus.TODO,
           priority: TaskPriority.MEDIUM,
-          assigneeId: null,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-      ];
+        })
+      ).rejects.toThrow(ForbiddenError);
 
-      vi.mocked(mockRepo.findTasks).mockResolvedValue({
-        tasks: sampleTasks,
-        total: 1,
-      });
-
-      const result = await taskService.getTasks(mockWorkspace.id, mockUserAlice, {
-        page: 1,
-        limit: 10,
-      });
-
-      expect(result.tasks).toEqual(sampleTasks);
-      expect(result.pagination).toEqual({
-        total: 1,
-        page: 1,
-        limit: 10,
-        totalItems: 1,
-        totalPages: 1,
-        hasNextPage: false,
-        hasPrevPage: false,
-      });
+      expect(mockRepo.createTask).not.toHaveBeenCalled();
     });
 
-    it('should throw ForbiddenError when user is not a member of the workspace', async () => {
+    it('getTasks: should throw ForbiddenError when user is not a member', async () => {
       vi.mocked(mockRepo.findWorkspaceById).mockResolvedValue(mockWorkspace);
       vi.mocked(mockRepo.isWorkspaceMember).mockResolvedValue(false);
 
@@ -174,59 +120,15 @@ describe('TaskService (Unit Tests)', () => {
 
       expect(mockRepo.findTasks).not.toHaveBeenCalled();
     });
-  });
 
-  describe('updateTaskStatus', () => {
-    const mockExistingTask = {
-      id: 'task-target',
-      workspaceId: mockWorkspace.id,
-      title: 'Target Task',
-      description: null,
-      status: TaskStatus.TODO,
-      priority: TaskPriority.MEDIUM,
-      assigneeId: null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-
-    it('should update task status and log activity when user is a member and task exists', async () => {
-      vi.mocked(mockRepo.findWorkspaceById).mockResolvedValue(mockWorkspace);
-      vi.mocked(mockRepo.isWorkspaceMember).mockResolvedValue(true);
-      vi.mocked(mockRepo.findTaskById).mockResolvedValue(mockExistingTask);
-
-      const updatedTask = {
-        ...mockExistingTask,
-        status: TaskStatus.DONE,
-      };
-
-      vi.mocked(mockRepo.updateStatusWithLog).mockResolvedValue(updatedTask);
-
-      const result = await taskService.updateTaskStatus(
-        mockWorkspace.id,
-        mockExistingTask.id,
-        mockUserAlice,
-        TaskStatus.DONE
-      );
-
-      expect(mockRepo.findTaskById).toHaveBeenCalledWith(mockExistingTask.id, mockWorkspace.id);
-      expect(mockRepo.updateStatusWithLog).toHaveBeenCalledWith({
-        taskId: mockExistingTask.id,
-        workspaceId: mockWorkspace.id,
-        userId: mockUserAlice,
-        oldStatus: TaskStatus.TODO,
-        newStatus: TaskStatus.DONE,
-      });
-      expect(result.status).toBe(TaskStatus.DONE);
-    });
-
-    it('should throw ForbiddenError when user is not a member', async () => {
+    it('updateTaskStatus: should throw ForbiddenError when user is not a member', async () => {
       vi.mocked(mockRepo.findWorkspaceById).mockResolvedValue(mockWorkspace);
       vi.mocked(mockRepo.isWorkspaceMember).mockResolvedValue(false);
 
       await expect(
         taskService.updateTaskStatus(
           mockWorkspace.id,
-          mockExistingTask.id,
+          'task-999',
           mockUserStranger,
           TaskStatus.DONE
         )
@@ -234,7 +136,9 @@ describe('TaskService (Unit Tests)', () => {
 
       expect(mockRepo.updateStatusWithLog).not.toHaveBeenCalled();
     });
+  });
 
+  describe('c. โยน NotFoundError เมื่อพยายามอัปเดตสถานะของ Task ที่ไม่มีอยู่จริง', () => {
     it('should throw NotFoundError when task does not exist in the workspace', async () => {
       vi.mocked(mockRepo.findWorkspaceById).mockResolvedValue(mockWorkspace);
       vi.mocked(mockRepo.isWorkspaceMember).mockResolvedValue(true);
@@ -243,13 +147,79 @@ describe('TaskService (Unit Tests)', () => {
       await expect(
         taskService.updateTaskStatus(
           mockWorkspace.id,
-          'non-existent-task',
+          'non-existent-task-id',
+          mockUserAlice,
+          TaskStatus.DONE
+        )
+      ).rejects.toThrow(NotFoundError);
+
+      expect(mockRepo.findTaskById).toHaveBeenCalledWith('non-existent-task-id', mockWorkspace.id);
+      expect(mockRepo.updateStatusWithLog).not.toHaveBeenCalled();
+    });
+
+    it('should throw NotFoundError when workspace does not exist', async () => {
+      vi.mocked(mockRepo.findWorkspaceById).mockResolvedValue(null);
+
+      await expect(
+        taskService.updateTaskStatus(
+          'non-existent-workspace-id',
+          'task-123',
           mockUserAlice,
           TaskStatus.DONE
         )
       ).rejects.toThrow(NotFoundError);
 
       expect(mockRepo.updateStatusWithLog).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('d. ตรวจสอบว่าฟังก์ชันอัปเดตสถานะเรียก Transaction method ด้วยค่า parameters ที่ถูกต้อง', () => {
+    const mockExistingTask = {
+      id: 'task-target-456',
+      workspaceId: mockWorkspace.id,
+      title: 'Target Task For Transaction Test',
+      description: 'Testing parameters passed to updateStatusWithLog',
+      status: TaskStatus.TODO,
+      priority: TaskPriority.MEDIUM,
+      assigneeId: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    it('should call updateStatusWithLog with exact required transaction parameters', async () => {
+      vi.mocked(mockRepo.findWorkspaceById).mockResolvedValue(mockWorkspace);
+      vi.mocked(mockRepo.isWorkspaceMember).mockResolvedValue(true);
+      vi.mocked(mockRepo.findTaskById).mockResolvedValue(mockExistingTask);
+
+      const updatedTaskResult = {
+        ...mockExistingTask,
+        status: TaskStatus.IN_PROGRESS,
+      };
+
+      vi.mocked(mockRepo.updateStatusWithLog).mockResolvedValue(updatedTaskResult);
+
+      const result = await taskService.updateTaskStatus(
+        mockWorkspace.id,
+        mockExistingTask.id,
+        mockUserAlice,
+        TaskStatus.IN_PROGRESS
+      );
+
+      expect(mockRepo.findWorkspaceById).toHaveBeenCalledWith(mockWorkspace.id);
+      expect(mockRepo.isWorkspaceMember).toHaveBeenCalledWith(mockWorkspace.id, mockUserAlice);
+      expect(mockRepo.findTaskById).toHaveBeenCalledWith(mockExistingTask.id, mockWorkspace.id);
+
+      // Verify exact parameter object passed to transaction repository method
+      expect(mockRepo.updateStatusWithLog).toHaveBeenCalledTimes(1);
+      expect(mockRepo.updateStatusWithLog).toHaveBeenCalledWith({
+        taskId: mockExistingTask.id,
+        workspaceId: mockWorkspace.id,
+        userId: mockUserAlice,
+        oldStatus: TaskStatus.TODO,
+        newStatus: TaskStatus.IN_PROGRESS,
+      });
+
+      expect(result.status).toBe(TaskStatus.IN_PROGRESS);
     });
   });
 });

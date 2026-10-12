@@ -18,8 +18,9 @@
     "db:seed": "prisma db seed",
     "db:studio": "prisma studio",
     "test": "vitest run",
-    "test:e2e": "vitest run tests/integration",
-    "test:unit": "vitest run tests/unit",
+    "test:coverage": "vitest run --coverage",
+    "test:unit": "vitest run src/modules/tasks/__tests__/task.service.unit.test.ts",
+    "test:integration": "vitest run src/modules/tasks/__tests__/task.api.integration.test.ts",
     "test:watch": "vitest"
   },
   "prisma": {
@@ -47,6 +48,7 @@
     "@types/express": "^5.0.6",
     "@types/node": "^26.6.5",
     "@types/supertest": "^7.2.1",
+    "@vitest/coverage-v8": "^5.0.3",
     "eslint": "^10.12.0",
     "eslint-config-prettier": "^10.1.8",
     "prettier": "^3.9.10",
