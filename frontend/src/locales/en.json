@@ -74,7 +74,7 @@
       "descriptionPlaceholder": "Provide background, steps, or acceptance criteria...",
       "priorityLabel": "Priority",
       "assigneeLabel": "Assignee",
-      "unassignedOption": "Unassigned",
+      "assigneePlaceholder": "Enter assignee name (e.g. John Doe, Alex)...",
       "submitButton": "Create Task",
       "cancelButton": "Cancel"
     },

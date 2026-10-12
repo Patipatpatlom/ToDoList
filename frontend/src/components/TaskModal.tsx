@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useTranslation } from 'react-i18next'
-import { Trash2 } from 'lucide-react'
+import { Trash2, User } from 'lucide-react'
 import { Modal } from './Modal'
 import { Button } from './Button'
 import { Input } from './Input'
@@ -21,7 +21,7 @@ const taskSchema = z.object({
     .max(500, { message: 'Description must be 500 characters or less' })
     .optional(),
   priority: z.enum(['LOW', 'MEDIUM', 'HIGH']),
-  assigneeId: z.string().optional(),
+  assigneeName: z.string().max(80).optional(),
 })
 
 export type TaskFormValues = z.infer<typeof taskSchema>
@@ -56,7 +56,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       title: '',
       description: '',
       priority: 'MEDIUM',
-      assigneeId: '',
+      assigneeName: '',
     },
   })
 
@@ -68,14 +68,14 @@ export const TaskModal: React.FC<TaskModalProps> = ({
           title: initialTask.title,
           description: initialTask.description || '',
           priority: initialTask.priority,
-          assigneeId: initialTask.assigneeId || initialTask.assignee?.id || '',
+          assigneeName: initialTask.assignee?.name || '',
         })
       } else {
         reset({
           title: '',
           description: '',
           priority: 'MEDIUM',
-          assigneeId: '',
+          assigneeName: '',
         })
       }
     }
@@ -157,7 +157,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
             )}
           </div>
 
-          {/* Assignee Selector */}
+          {/* Assignee Custom Input */}
           <div className="flex flex-col gap-1.5">
             <label
               htmlFor="task-form-assignee"
@@ -165,19 +165,16 @@ export const TaskModal: React.FC<TaskModalProps> = ({
             >
               {t('dashboard.modal.assigneeLabel')}
             </label>
-            <select
-              id="task-form-assignee"
-              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500 cursor-pointer"
-              {...register('assigneeId')}
-            >
-              <option value="">{t('dashboard.modal.unassignedOption')}</option>
-              <option value="7217035a-7369-481a-b37e-7e22cc2d68c8">
-                Alice Johnson (Tech Lead)
-              </option>
-              <option value="eb99fc02-8a76-407a-a42d-3fe8fd42dc99">
-                Bob Smith (Developer)
-              </option>
-            </select>
+            <div className="relative">
+              <User className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                id="task-form-assignee"
+                type="text"
+                placeholder={t('dashboard.modal.assigneePlaceholder')}
+                className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500 transition hover:border-slate-300"
+                {...register('assigneeName')}
+              />
+            </div>
           </div>
         </div>
 

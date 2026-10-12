@@ -74,7 +74,7 @@
       "descriptionPlaceholder": "ระบุที่มา ขั้นตอน หรือเกณฑ์การตรวจรับงาน...",
       "priorityLabel": "ระดับความสำคัญ",
       "assigneeLabel": "ผู้รับผิดชอบงาน",
-      "unassignedOption": "ยังไม่มอบหมาย",
+      "assigneePlaceholder": "พิมพ์ชื่อผู้รับผิดชอบ (เช่น สมชาย, กานต์)...",
       "submitButton": "สร้างงาน",
       "cancelButton": "ยกเลิก"
     },

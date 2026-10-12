@@ -94,28 +94,17 @@ export const DashboardPage: React.FC = () => {
     }
   }
 
-  // Known workspace members list
-  const workspaceMembers = useMemo(
-    () => [
-      {
-        id: '7217035a-7369-481a-b37e-7e22cc2d68c8',
-        name: 'Alice Johnson',
-        email: 'alice@example.com',
-      },
-      {
-        id: 'eb99fc02-8a76-407a-a42d-3fe8fd42dc99',
-        name: 'Bob Smith',
-        email: 'bob@example.com',
-      },
-    ],
-    [],
-  )
-
-  // Handle Create or Edit task submit
+  // Handle Create or Edit task submit with custom assignee name
   const handleFormSubmit = async (values: TaskFormValues) => {
     try {
-      const selectedAssignee =
-        workspaceMembers.find((m) => m.id === values.assigneeId) || null
+      const trimmedName = values.assigneeName?.trim()
+      const customAssignee = trimmedName
+        ? {
+            id: `assignee-${Date.now()}`,
+            name: trimmedName,
+            email: '',
+          }
+        : null
 
       if (editingTask) {
         // Update local task state in this phase
@@ -127,8 +116,8 @@ export const DashboardPage: React.FC = () => {
                 title: values.title,
                 description: values.description || null,
                 priority: values.priority,
-                assigneeId: values.assigneeId || null,
-                assignee: selectedAssignee,
+                assigneeId: customAssignee ? customAssignee.id : null,
+                assignee: customAssignee,
               }
             : t,
         )
@@ -136,12 +125,18 @@ export const DashboardPage: React.FC = () => {
         toast.success(t('common.save'))
         setEditingTask(null)
       } else {
-        await createTask({
+        const newTask = await createTask({
           title: values.title,
           description: values.description,
           priority: values.priority,
-          assigneeId: values.assigneeId || undefined,
         })
+        if (customAssignee) {
+          const currentTasks = useTaskStore.getState().tasks
+          const updated = currentTasks.map((t) =>
+            t.id === newTask.id ? { ...t, assignee: customAssignee } : t,
+          )
+          useTaskStore.getState().setTasks(updated)
+        }
         toast.success(t('dashboard.toast.createSuccess'))
       }
     } catch {
