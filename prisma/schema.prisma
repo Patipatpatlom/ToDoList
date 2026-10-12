@@ -46,6 +46,7 @@ model Workspace {
   slug      String   @unique
   ownerId   String   @map("owner_id")
   createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
   owner   User              @relation("WorkspaceOwner", fields: [ownerId], references: [id], onDelete: Cascade)
   members WorkspaceMember[]
