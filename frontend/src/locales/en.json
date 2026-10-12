@@ -1,0 +1,78 @@
+{
+  "common": {
+    "appName": "TaskFlow",
+    "suite": "Management Suite",
+    "search": "Search",
+    "filter": "Filter",
+    "cancel": "Cancel",
+    "save": "Save",
+    "edit": "Edit",
+    "delete": "Delete",
+    "actions": "Actions",
+    "priority": "Priority",
+    "status": "Status",
+    "all": "All",
+    "loading": "Loading...",
+    "close": "Close",
+    "logout": "Logout",
+    "language": "Language",
+    "th": "ไทย",
+    "en": "EN"
+  },
+  "navbar": {
+    "workspaceLabel": "Workspace",
+    "workspaceName": "Main Production",
+    "notifications": "Notifications",
+    "signIn": "Sign In",
+    "getStarted": "Get Started",
+    "defaultUser": "Workspace User"
+  },
+  "sidebar": {
+    "workspaceTitle": "Workspace Alpha",
+    "workspaceSubtitle": "Free Tier · 2 Members",
+    "views": "Views & Status",
+    "taskBoard": "Task Board",
+    "allTasks": "All Tasks",
+    "inProgress": "In Progress",
+    "completed": "Completed",
+    "settings": "Settings"
+  },
+  "dashboard": {
+    "title": "Task Management Board",
+    "subtitle": "Organize, track, and collaborate on workspace tasks in real-time.",
+    "phaseBadge": "Phase 2",
+    "createTask": "Create Task",
+    "kpi": {
+      "totalTasks": "Total Tasks",
+      "inProgress": "In Progress",
+      "completed": "Completed",
+      "highPriority": "High Priority"
+    },
+    "searchPlaceholder": "Search tasks by title or details...",
+    "priorityFilterLabel": "Priority:",
+    "priorities": {
+      "all": "All Priorities",
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High"
+    },
+    "columns": {
+      "todo": "To Do",
+      "inProgress": "In Progress",
+      "done": "Completed",
+      "empty": "No tasks in this stage"
+    },
+    "unassigned": "Unassigned",
+    "modal": {
+      "title": "Create New Task",
+      "description": "Add a new task to your workspace board.",
+      "taskTitle": "Task Title",
+      "taskTitlePlaceholder": "e.g. Implement User Authentication",
+      "descriptionLabel": "Description",
+      "descriptionPlaceholder": "Provide background, steps, or acceptance criteria...",
+      "priorityLabel": "Priority",
+      "submitButton": "Create Task",
+      "cancelButton": "Cancel"
+    }
+  }
+}

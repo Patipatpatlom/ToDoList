@@ -1,101 +1,73 @@
 import React from 'react'
 import { NavLink } from 'react-router-dom'
-import {
-  Kanban,
-  CheckCircle2,
-  Clock,
-  Layers,
-  Settings,
-  FolderKanban,
-} from 'lucide-react'
+import { Kanban, CheckCircle2, Clock, FolderKanban } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { cn } from '../utils/cn'
 
-interface NavItem {
-  name: string
-  to: string
-  icon: React.ReactNode
-  badge?: string
-}
-
 export const Sidebar: React.FC = () => {
-  const mainNavItems: NavItem[] = [
+  const { t } = useTranslation()
+
+  const navItems = [
     {
-      name: 'Task Board',
+      name: t('sidebar.taskBoard'),
       to: '/',
       icon: <Kanban className="w-4 h-4" />,
     },
     {
-      name: 'All Tasks',
-      to: '/?view=all',
-      icon: <Layers className="w-4 h-4" />,
-      badge: '3',
-    },
-    {
-      name: 'In Progress',
+      name: t('sidebar.inProgress'),
       to: '/?status=IN_PROGRESS',
       icon: <Clock className="w-4 h-4" />,
     },
     {
-      name: 'Completed',
+      name: t('sidebar.completed'),
       to: '/?status=DONE',
       icon: <CheckCircle2 className="w-4 h-4" />,
     },
   ]
 
   return (
-    <aside className="hidden lg:flex w-64 flex-col border-r border-slate-200/80 bg-white/70 backdrop-blur-md min-h-[calc(100vh-4rem)] p-4">
-      <div className="mb-6 px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200/70">
-        <div className="flex items-center gap-2.5">
-          <div className="p-2 rounded-lg bg-brand-50 text-brand-600">
+    <aside className="hidden lg:flex w-60 flex-col bg-transparent min-h-[calc(100vh-4rem)] p-4 pr-6 select-none">
+      {/* Workspace pill - light & friendly */}
+      <div className="mb-6 p-3 rounded-2xl bg-white shadow-xs">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-xl bg-brand-50 text-brand-600">
             <FolderKanban className="w-4 h-4" />
           </div>
           <div>
-            <div className="text-xs font-bold text-slate-800">Workspace Alpha</div>
-            <div className="text-[11px] text-slate-500">Free Tier · 2 Members</div>
+            <div className="text-xs font-bold text-slate-800">
+              {t('sidebar.workspaceTitle')}
+            </div>
+            <div className="text-[11px] text-slate-400">
+              {t('sidebar.workspaceSubtitle')}
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 px-3 mb-2">
-        Views & Status
+      <div className="text-[11px] font-semibold text-slate-400 px-3 mb-2">
+        {t('sidebar.views')}
       </div>
 
+      {/* Simplified nav list */}
       <nav className="flex-1 space-y-1">
-        {mainNavItems.map((item) => (
+        {navItems.map((item) => (
           <NavLink
-            key={item.name}
+            key={item.to}
             to={item.to}
             className={({ isActive }) =>
               cn(
-                'flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                'flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all duration-150',
                 isActive
-                  ? 'bg-brand-50 text-brand-700 font-semibold'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100',
+                  ? 'bg-brand-50 text-brand-700 font-semibold shadow-2xs'
+                  : 'text-slate-500 hover:text-slate-900 hover:bg-white',
               )
             }
           >
-            <div className="flex items-center gap-2.5">
-              {item.icon}
-              <span>{item.name}</span>
-            </div>
-            {item.badge && (
-              <span className="px-2 py-0.5 text-xs rounded-full bg-brand-100 text-brand-700 font-semibold">
-                {item.badge}
-              </span>
-            )}
+            {item.icon}
+            <span>{item.name}</span>
           </NavLink>
         ))}
       </nav>
-
-      <div className="pt-4 mt-4 border-t border-slate-200 space-y-1">
-        <NavLink
-          to="/#settings"
-          className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition"
-        >
-          <Settings className="w-4 h-4" />
-          <span>Project Settings</span>
-        </NavLink>
-      </div>
     </aside>
   )
 }

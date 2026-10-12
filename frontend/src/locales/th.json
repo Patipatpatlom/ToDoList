@@ -1,0 +1,78 @@
+{
+  "common": {
+    "appName": "TaskFlow",
+    "suite": "ระบบจัดการงานองค์กร",
+    "search": "ค้นหา",
+    "filter": "ตัวกรอง",
+    "cancel": "ยกเลิก",
+    "save": "บันทึก",
+    "edit": "แก้ไข",
+    "delete": "ลบ",
+    "actions": "การจัดการ",
+    "priority": "ความสำคัญ",
+    "status": "สถานะ",
+    "all": "ทั้งหมด",
+    "loading": "กำลังโหลด...",
+    "close": "ปิด",
+    "logout": "ออกจากระบบ",
+    "language": "ภาษา",
+    "th": "ไทย",
+    "en": "EN"
+  },
+  "navbar": {
+    "workspaceLabel": "พื้นที่ทำงาน",
+    "workspaceName": "Main Production",
+    "notifications": "การแจ้งเตือน",
+    "signIn": "เข้าสู่ระบบ",
+    "getStarted": "เริ่มต้นใช้งาน",
+    "defaultUser": "ผู้ใช้งานระบบ"
+  },
+  "sidebar": {
+    "workspaceTitle": "Workspace Alpha",
+    "workspaceSubtitle": "ระดับเริ่มต้น · 2 สมาชิก",
+    "views": "มุมมองและสถานะ",
+    "taskBoard": "กระดานงาน",
+    "allTasks": "งานทั้งหมด",
+    "inProgress": "กำลังดำเนินการ",
+    "completed": "เสร็จสิ้น",
+    "settings": "ตั้งค่าโครงการ"
+  },
+  "dashboard": {
+    "title": "กระดานจัดการงาน",
+    "subtitle": "จัดระเบียบ ติดตาม และทำงานร่วมกันในทีมได้อย่างมีประสิทธิภาพแบบเรียลไทม์",
+    "phaseBadge": "เฟส 2",
+    "createTask": "สร้างงานใหม่",
+    "kpi": {
+      "totalTasks": "งานทั้งหมด",
+      "inProgress": "กำลังดำเนินการ",
+      "completed": "เสร็จสิ้น",
+      "highPriority": "ความสำคัญสูง"
+    },
+    "searchPlaceholder": "ค้นหางานตามชื่อหรือรายละเอียด...",
+    "priorityFilterLabel": "ความสำคัญ:",
+    "priorities": {
+      "all": "ทุกระดับความสำคัญ",
+      "low": "ต่ำ",
+      "medium": "ปานกลาง",
+      "high": "สูง"
+    },
+    "columns": {
+      "todo": "รอดำเนินการ",
+      "inProgress": "กำลังดำเนินการ",
+      "done": "เสร็จสมบูรณ์",
+      "empty": "ไม่มีงานในสถานะนี้"
+    },
+    "unassigned": "ยังไม่มอบหมาย",
+    "modal": {
+      "title": "สร้างงานใหม่",
+      "description": "เพิ่มงานใหม่เข้าสู่กระดานงานของคุณ",
+      "taskTitle": "ชื่องาน",
+      "taskTitlePlaceholder": "เช่น จัดทำระบบยืนยันตัวตนผู้ใช้งาน",
+      "descriptionLabel": "รายละเอียดงาน",
+      "descriptionPlaceholder": "ระบุที่มา ขั้นตอน หรือเกณฑ์การตรวจรับงาน...",
+      "priorityLabel": "ระดับความสำคัญ",
+      "submitButton": "สร้างงาน",
+      "cancelButton": "ยกเลิก"
+    }
+  }
+}

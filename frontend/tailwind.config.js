@@ -18,7 +18,7 @@ export default {
         },
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+        sans: ['"Noto Sans Thai"', 'Inter', 'system-ui', '-apple-system', 'sans-serif'],
       },
     },
   },
