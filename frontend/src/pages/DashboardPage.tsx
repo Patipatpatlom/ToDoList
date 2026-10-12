@@ -16,7 +16,6 @@ import {
   AlertTriangle,
   Calendar,
   User,
-  Sparkles,
   Layers,
   Loader2,
   GripVertical,
@@ -261,9 +260,6 @@ export const DashboardPage: React.FC = () => {
             <h1 className="text-2xl font-bold tracking-tight text-slate-900">
               {t('dashboard.title')}
             </h1>
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-brand-50 text-brand-600">
-              <Sparkles className="w-3 h-3" /> {t('dashboard.phaseBadge')}
-            </span>
             {isLoading && (
               <Loader2 className="w-4 h-4 text-brand-500 animate-spin ml-2" />
             )}

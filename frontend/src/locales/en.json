@@ -41,7 +41,6 @@
   "dashboard": {
     "title": "Task Management Board",
     "subtitle": "Organize, track, and collaborate on workspace tasks in real-time.",
-    "phaseBadge": "Phase 2",
     "createTask": "Create Task",
     "filteringStatus": "Filtered view:",
     "showAllColumns": "View full board",
