@@ -154,6 +154,7 @@ describe('TaskService (Unit Tests)', () => {
 
       expect(result.tasks).toEqual(sampleTasks);
       expect(result.pagination).toEqual({
+        total: 1,
         page: 1,
         limit: 10,
         totalItems: 1,

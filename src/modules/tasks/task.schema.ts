@@ -45,7 +45,7 @@ export const getTasksQuerySchema = z.object({
     .optional(),
   assigneeId: z.string().uuid({ message: 'Invalid assigneeId filter format' }).optional(),
   page: z.coerce.number().int().min(1, 'Page must be greater than 0').default(1),
-  limit: z.coerce.number().int().min(1).max(100, 'Limit cannot exceed 100').default(20),
+  limit: z.coerce.number().int().min(1).max(100, 'Limit cannot exceed 100').default(10),
 });
 
 export const updateTaskStatusBodySchema = z.object({

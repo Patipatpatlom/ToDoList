@@ -165,6 +165,8 @@ describe('Task API Integration Tests (Supertest)', () => {
       expect(res.body.pagination).toBeDefined();
       expect(res.body.pagination.page).toBe(1);
       expect(res.body.pagination.limit).toBe(10);
+      expect(res.body.pagination.total).toBeGreaterThanOrEqual(1);
+      expect(res.body.pagination.totalPages).toBeGreaterThanOrEqual(1);
     });
 
     it('should correctly filter tasks by status', async () => {

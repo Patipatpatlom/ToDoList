@@ -6,6 +6,7 @@ import { ForbiddenError, NotFoundError, BadRequestError } from '@/shared/errors/
 export interface PaginatedTasksResult {
   tasks: Task[];
   pagination: {
+    total: number;
     page: number;
     limit: number;
     totalItems: number;
@@ -63,7 +64,7 @@ export class TaskService {
     await this.ensureWorkspaceMember(workspaceId, userId);
 
     const page = Math.max(1, Number(query?.page) || 1);
-    const limit = Math.min(100, Math.max(1, Number(query?.limit) || 20));
+    const limit = Math.min(100, Math.max(1, Number(query?.limit) || 10));
     const { status, priority, assigneeId } = query || {};
     const skip = (page - 1) * limit;
 
@@ -79,6 +80,7 @@ export class TaskService {
     return {
       tasks,
       pagination: {
+        total,
         page,
         limit,
         totalItems: total,
