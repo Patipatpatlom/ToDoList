@@ -9,16 +9,29 @@ export interface RequestValidationSchema {
 }
 
 export const validate = (schemas: RequestValidationSchema) => {
-  return async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
+  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       if (schemas.body) {
         req.body = await schemas.body.parseAsync(req.body);
+        res.locals.body = req.body;
       }
       if (schemas.query) {
-        req.query = (await schemas.query.parseAsync(req.query)) as Request['query'];
+        const parsed = await schemas.query.parseAsync(req.query);
+        res.locals.query = parsed;
+        try {
+          Object.assign(req.query, parsed);
+        } catch {
+          // fallback if query object properties are strictly non-extensible
+        }
       }
       if (schemas.params) {
-        req.params = (await schemas.params.parseAsync(req.params)) as Request['params'];
+        const parsed = await schemas.params.parseAsync(req.params);
+        res.locals.params = parsed;
+        try {
+          Object.assign(req.params, parsed);
+        } catch {
+          // fallback if params object properties are strictly non-extensible
+        }
       }
       next();
     } catch (error) {
