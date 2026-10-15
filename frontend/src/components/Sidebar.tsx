@@ -11,11 +11,17 @@ import {
   Plus,
   X,
   Trash2,
+  Palette,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { cn } from '../utils/cn'
-import { useTaskStore, type WorkspaceItem } from '../store/taskStore'
+import {
+  useTaskStore,
+  type WorkspaceItem,
+  WORKSPACE_COLORS,
+  type WorkspaceColor,
+} from '../store/taskStore'
 import { ConfirmModal } from './ConfirmModal'
 
 export const Sidebar: React.FC = () => {
@@ -28,12 +34,17 @@ export const Sidebar: React.FC = () => {
     switchWorkspace,
     addWorkspace,
     deleteWorkspace,
+    updateWorkspaceColor,
   } = useTaskStore()
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
   const [newWorkspaceName, setNewWorkspaceName] = useState('')
+  const [selectedColor, setSelectedColor] = useState<WorkspaceColor>(
+    WORKSPACE_COLORS[1],
+  )
+  const [colorPickerWsId, setColorPickerWsId] = useState<string | null>(null)
   const [workspaceToDelete, setWorkspaceToDelete] = useState<WorkspaceItem | null>(null)
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false)
 
@@ -125,8 +136,8 @@ export const Sidebar: React.FC = () => {
       id: `ws-${Date.now()}`,
       name: newWorkspaceName.trim(),
       subtitle: 'Free · 1 Member',
-      bgColor: 'bg-amber-50',
-      textColor: 'text-amber-600',
+      bgColor: selectedColor.bgColor,
+      textColor: selectedColor.textColor,
     }
 
     addWorkspace(newWs)
@@ -183,6 +194,47 @@ export const Sidebar: React.FC = () => {
         {/* Popover Dropdown Menu */}
         {isDropdownOpen && (
           <div className="absolute top-full left-0 right-0 mt-2 z-50 bg-white rounded-2xl shadow-xl border border-slate-100 p-2 animate-in fade-in slide-in-from-top-2 duration-150">
+            {/* Active Workspace Color Quick Picker */}
+            {activeWorkspace && (
+              <div className="mx-0.5 mb-2 p-2 bg-slate-50/90 rounded-xl border border-slate-100">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-[11px] font-medium text-slate-500 flex items-center gap-1">
+                    <Palette className="w-3 h-3 text-slate-400" />
+                    {t('sidebar.changeFolderColor')}
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-semibold truncate max-w-[90px]">
+                    {activeWorkspace.name}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between px-1">
+                  {WORKSPACE_COLORS.map((c) => {
+                    const isActive = activeWorkspace.bgColor === c.bgColor
+                    return (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          updateWorkspaceColor(activeWorkspace.id, c)
+                          toast.success(`${t('sidebar.colorUpdated')}: ${c.name}`)
+                        }}
+                        title={c.name}
+                        className={cn(
+                          'w-6 h-6 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-2xs',
+                          c.badgeBg,
+                          isActive
+                            ? 'ring-2 ring-offset-2 ring-slate-800 scale-110'
+                            : 'opacity-70 hover:opacity-100 hover:scale-105',
+                        )}
+                      >
+                        {isActive && <Check className="w-3.5 h-3.5 text-white" />}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
             <div className="px-2 py-1.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
               {t('sidebar.switchWorkspace')}
             </div>
@@ -193,54 +245,107 @@ export const Sidebar: React.FC = () => {
                 {workspaces.map((ws) => {
                   const isSelected = ws.id === activeWorkspace?.id
                   return (
-                    <div
-                      key={ws.id}
-                      className={cn(
-                        'w-full flex items-center justify-between p-1 rounded-xl text-xs transition-colors group/ws',
-                        isSelected
-                          ? 'bg-brand-50/80 text-brand-900 font-semibold'
-                          : 'hover:bg-slate-50 text-slate-700',
-                      )}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => handleSelectWorkspace(ws)}
-                        className="flex items-center gap-2.5 min-w-0 flex-1 text-left cursor-pointer p-1 rounded-lg"
-                      >
-                        <div
-                          className={cn(
-                            'p-1.5 rounded-lg shrink-0',
-                            ws.bgColor,
-                            ws.textColor,
-                          )}
-                        >
-                          <FolderKanban className="w-3.5 h-3.5" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="truncate font-medium">{ws.name}</div>
-                          <div className="text-[10px] text-slate-400 truncate">
-                            {ws.subtitle}
-                          </div>
-                        </div>
-                      </button>
-                      <div className="flex items-center gap-1 shrink-0 px-1">
-                        {isSelected && (
-                          <Check className="w-4 h-4 text-brand-600 shrink-0" />
+                    <div key={ws.id} className="space-y-1">
+                      <div
+                        className={cn(
+                          'w-full flex items-center justify-between p-1 rounded-xl text-xs transition-colors group/ws',
+                          isSelected
+                            ? 'bg-brand-50/80 text-brand-900 font-semibold'
+                            : 'hover:bg-slate-50 text-slate-700',
                         )}
+                      >
                         <button
                           type="button"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setWorkspaceToDelete(ws)
-                            setIsConfirmDeleteOpen(true)
-                            setIsDropdownOpen(false)
-                          }}
-                          title={t('sidebar.deleteWorkspace')}
-                          className="opacity-0 group-hover/ws:opacity-100 p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-all cursor-pointer"
+                          onClick={() => handleSelectWorkspace(ws)}
+                          className="flex items-center gap-2.5 min-w-0 flex-1 text-left cursor-pointer p-1 rounded-lg"
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <div
+                            className={cn(
+                              'p-1.5 rounded-lg shrink-0',
+                              ws.bgColor,
+                              ws.textColor,
+                            )}
+                          >
+                            <FolderKanban className="w-3.5 h-3.5" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="truncate font-medium">{ws.name}</div>
+                            <div className="text-[10px] text-slate-400 truncate">
+                              {ws.subtitle}
+                            </div>
+                          </div>
                         </button>
+                        <div className="flex items-center gap-0.5 shrink-0 px-1">
+                          {isSelected && (
+                            <Check className="w-4 h-4 text-brand-600 shrink-0 mr-1" />
+                          )}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setColorPickerWsId(colorPickerWsId === ws.id ? null : ws.id)
+                            }}
+                            title={t('sidebar.changeFolderColor')}
+                            className={cn(
+                              'p-1 rounded-md transition-all cursor-pointer',
+                              colorPickerWsId === ws.id
+                                ? 'text-brand-600 bg-brand-50 opacity-100'
+                                : 'opacity-0 group-hover/ws:opacity-100 text-slate-400 hover:text-brand-600 hover:bg-brand-50',
+                            )}
+                          >
+                            <Palette className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setWorkspaceToDelete(ws)
+                              setIsConfirmDeleteOpen(true)
+                              setIsDropdownOpen(false)
+                            }}
+                            title={t('sidebar.deleteWorkspace')}
+                            className="opacity-0 group-hover/ws:opacity-100 p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-all cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
+
+                      {/* Inline Color Picker for this workspace */}
+                      {colorPickerWsId === ws.id && (
+                        <div className="flex items-center justify-between px-2 py-1.5 bg-slate-50 rounded-lg border border-slate-100 animate-in fade-in duration-150">
+                          <span className="text-[10px] text-slate-500 font-medium">
+                            {t('sidebar.folderColor')}:
+                          </span>
+                          <div className="flex items-center gap-1.5">
+                            {WORKSPACE_COLORS.map((c) => {
+                              const isActive = ws.bgColor === c.bgColor
+                              return (
+                                <button
+                                  key={c.id}
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    updateWorkspaceColor(ws.id, c)
+                                    setColorPickerWsId(null)
+                                    toast.success(`${t('sidebar.colorUpdated')}: ${c.name}`)
+                                  }}
+                                  title={c.name}
+                                  className={cn(
+                                    'w-5 h-5 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-2xs',
+                                    c.badgeBg,
+                                    isActive
+                                      ? 'ring-2 ring-offset-1 ring-slate-800 scale-110'
+                                      : 'opacity-70 hover:opacity-100 hover:scale-105',
+                                  )}
+                                >
+                                  {isActive && <Check className="w-3 h-3 text-white" />}
+                                </button>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )
                 })}
@@ -257,7 +362,7 @@ export const Sidebar: React.FC = () => {
             {isCreating ? (
               <form
                 onSubmit={handleCreateWorkspaceSubmit}
-                className="p-1 space-y-2"
+                className="p-1 space-y-2.5"
               >
                 <div className="flex items-center gap-1.5">
                   <input
@@ -276,6 +381,37 @@ export const Sidebar: React.FC = () => {
                     <X className="w-3.5 h-3.5" />
                   </button>
                 </div>
+
+                {/* 5 Folder Color Selection for new workspace */}
+                <div>
+                  <div className="text-[11px] font-medium text-slate-500 mb-1.5 flex items-center justify-between">
+                    <span>{t('sidebar.folderColor')}</span>
+                    <span className="text-[10px] text-slate-400 font-normal">{selectedColor.name}</span>
+                  </div>
+                  <div className="flex items-center justify-between px-1">
+                    {WORKSPACE_COLORS.map((c) => {
+                      const isSelected = selectedColor.id === c.id
+                      return (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => setSelectedColor(c)}
+                          title={c.name}
+                          className={cn(
+                            'w-6 h-6 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-2xs',
+                            c.badgeBg,
+                            isSelected
+                              ? 'ring-2 ring-offset-2 ring-slate-800 scale-110'
+                              : 'opacity-70 hover:opacity-100 hover:scale-105',
+                          )}
+                        >
+                          {isSelected && <Check className="w-3.5 h-3.5 text-white" />}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+
                 <button
                   type="submit"
                   disabled={!newWorkspaceName.trim()}

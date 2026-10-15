@@ -14,6 +14,58 @@ export interface WorkspaceItem {
   textColor: string
 }
 
+export interface WorkspaceColor {
+  id: string
+  name: string
+  bgColor: string
+  textColor: string
+  badgeBg: string
+  ringColor: string
+}
+
+export const WORKSPACE_COLORS: WorkspaceColor[] = [
+  {
+    id: 'red',
+    name: 'แดง',
+    bgColor: 'bg-rose-50',
+    textColor: 'text-rose-600',
+    badgeBg: 'bg-rose-500',
+    ringColor: 'ring-rose-400',
+  },
+  {
+    id: 'blue',
+    name: 'ฟ้า',
+    bgColor: 'bg-sky-50',
+    textColor: 'text-sky-600',
+    badgeBg: 'bg-sky-500',
+    ringColor: 'ring-sky-400',
+  },
+  {
+    id: 'green',
+    name: 'เขียว',
+    bgColor: 'bg-emerald-50',
+    textColor: 'text-emerald-600',
+    badgeBg: 'bg-emerald-500',
+    ringColor: 'ring-emerald-400',
+  },
+  {
+    id: 'purple',
+    name: 'ม่วง',
+    bgColor: 'bg-purple-50',
+    textColor: 'text-purple-600',
+    badgeBg: 'bg-purple-500',
+    ringColor: 'ring-purple-400',
+  },
+  {
+    id: 'pink',
+    name: 'ชมพู',
+    bgColor: 'bg-pink-50',
+    textColor: 'text-pink-600',
+    badgeBg: 'bg-pink-500',
+    ringColor: 'ring-pink-400',
+  },
+]
+
 export const DEFAULT_WORKSPACES: WorkspaceItem[] = []
 
 const TASKS_STORAGE_KEY = 'taskflow_workspace_tasks'
@@ -95,6 +147,10 @@ interface TaskState {
   addWorkspace: (workspace: WorkspaceItem) => void
   deleteWorkspace: (workspaceId: string) => void
   clearAllWorkspaces: () => void
+  updateWorkspaceColor: (
+    workspaceId: string,
+    color: { bgColor: string; textColor: string },
+  ) => void
   createTask: (data: CreateTaskDTO) => Promise<Task>
   updateTask: (
     taskId: string,
@@ -292,6 +348,31 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     } catch {
       // ignore
     }
+  },
+
+  updateWorkspaceColor: (
+    workspaceId: string,
+    color: { bgColor: string; textColor: string },
+  ) => {
+    const updatedWorkspaces = get().workspaces.map((w) =>
+      w.id === workspaceId
+        ? { ...w, bgColor: color.bgColor, textColor: color.textColor }
+        : w,
+    )
+    let updatedActive = get().activeWorkspace
+    if (updatedActive?.id === workspaceId) {
+      updatedActive = {
+        ...updatedActive,
+        bgColor: color.bgColor,
+        textColor: color.textColor,
+      }
+    }
+
+    set({
+      workspaces: updatedWorkspaces,
+      activeWorkspace: updatedActive,
+    })
+    saveWorkspaces(updatedWorkspaces)
   },
 
   fetchTasks: async (workspaceId = get().activeWorkspaceId ?? undefined) => {
